@@ -100,6 +100,39 @@ class RuntimeLogStoreTest {
         assertFalse(file.exists())
     }
 
+    @Test
+    fun entryCarriesNotableIssuesButNotConversationJson() = withTempDirectory { root ->
+        val store = RuntimeLogStore(root)
+        val file = store.newLogFile("qwen-code", "demo", "aaaa1111")
+        file.writeText(
+            """
+            {"type":"assistant","message":{"content":[{"type":"text","text":"The build failed once, retrying"}]}}
+            Warning: NPM config key node_version is deprecated
+            npm ERR! code ENOENT
+            {"type":"result","is_error":true,"result":"Upstream 429 from provider"}
+            plain progress chatter without diagnostics
+            """.trimIndent() + "\n",
+        )
+        store.record(file, "qwen-code", "demo", 1_000L, exitCode = 0, failed = false)
+
+        val issues = store.entries().single().errors
+        assertTrue(issues.any { it.contains("deprecated") })
+        assertTrue(issues.any { it.contains("ENOENT") })
+        assertTrue(issues.any { it.contains("Upstream 429") })
+        assertFalse(issues.any { it.contains("The build failed once") })
+        assertFalse(issues.any { it.contains("plain progress chatter") })
+    }
+
+    @Test
+    fun failureFooterBecomesAnIssue() = withTempDirectory { root ->
+        val store = RuntimeLogStore(root)
+        val file = store.newLogFile("dsh", "demo", "bbbb2222")
+        file.writeText("nothing notable here\n")
+        store.record(file, "dsh", "demo", 1_000L, exitCode = 1, failed = true, reason = "provider 500")
+
+        assertTrue(store.entries().single().errors.any { it.contains("FAILED") })
+    }
+
     private fun <T> withTempDirectory(block: (File) -> T): T {
         val temp = Files.createTempDirectory("mh-runtime-logs").toFile()
         return try {

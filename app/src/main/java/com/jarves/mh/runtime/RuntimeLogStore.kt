@@ -16,6 +16,7 @@ data class RuntimeLogEntry(
     val exitCode: Int?,
     val failed: Boolean,
     val bytes: Long,
+    val errors: List<String> = emptyList(),
 )
 
 /**
@@ -60,6 +61,7 @@ class RuntimeLogStore(private val root: File) {
                 .put("exit", exitCode ?: JSONObject.NULL)
                 .put("failed", failed)
                 .put("bytes", file.length())
+                .put("issues", JSONArray(extractIssues(file)))
             indexFile.parentFile?.mkdirs()
             indexFile.appendText("$row\n")
         }
@@ -82,6 +84,9 @@ class RuntimeLogStore(private val root: File) {
                     exitCode = if (row.isNull("exit")) null else row.optInt("exit"),
                     failed = row.optBoolean("failed"),
                     bytes = log.length(),
+                    errors = row.optJSONArray("issues")?.let { issues ->
+                        (0 until issues.length()).map(issues::getString)
+                    }.orEmpty(),
                 )
             }.getOrNull()
         }.toList().sortedByDescending(RuntimeLogEntry::startedAtMillis)
@@ -132,7 +137,41 @@ class RuntimeLogStore(private val root: File) {
         const val MAX_LOGS = 12
         const val MAX_TAIL_BYTES = 256 * 1024
         const val MAX_LOG_BYTES = 16L shl 20
+        const val MAX_ISSUES = 40
         val FOOTER_TIME = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
         val ANSI_ESCAPE = Regex("\\u001B(?:\\[[0-?]*[ -/]*[@-~]|\\][^\\u0007]*(?:\\u0007|\\u001B\\\\))")
+        val ISSUE_REGEX = Regex(
+            "(?i)\\b(error|errors|warning|warn|exception|traceback|fatal|failed|failure|panic|" +
+                "killed|abort(?:ed)?|stack ?trace|out of memory|npm err|ERR_|" +
+                "ENOENT|EACCES|EPERM|ENOSPC|ETIMEDOUT|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|ECONNRESET)\\b",
+        )
+    }
+
+    /**
+     * Pull the diagnostic gold out of a raw transcript: harness console
+     * errors/warnings from stderr, provider error notifications, and failure
+     * footers. Plain conversation JSON is skipped unless it signals an error.
+     */
+    private fun extractIssues(file: File): List<String> {
+        val issues = LinkedHashSet<String>()
+        runCatching {
+            file.bufferedReader().useLines { lines ->
+                lines.forEach { raw ->
+                    if (issues.size >= MAX_ISSUES) return@forEach
+                    val line = raw.replace(ANSI_ESCAPE, "").trim()
+                    val isJson = line.startsWith("{")
+                    if (line.isBlank() || line.length > if (isJson) 20_000 else 4_000) return@forEach
+                    val notable = when {
+                        isJson -> line.contains("\"is_error\":true") ||
+                            line.contains("\"error_notification\"") ||
+                            line.contains("\"error_during_execution\"")
+                        line.startsWith("---- PocketDev") -> line.contains("FAILED")
+                        else -> ISSUE_REGEX.containsMatchIn(line)
+                    }
+                    if (notable) issues.add(line.take(300))
+                }
+            }
+        }
+        return issues.take(MAX_ISSUES)
     }
 }

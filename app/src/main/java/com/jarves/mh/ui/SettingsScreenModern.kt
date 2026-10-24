@@ -4,6 +4,8 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import android.text.format.DateUtils
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -33,6 +35,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Code
@@ -163,12 +166,22 @@ fun SettingsScreen(
     onOpenHarnessLog: (String) -> Unit = {},
     onCloseHarnessLog: () -> Unit = {},
     onClearHarnessLogs: () -> Unit = {},
+    onSaveHarnessLog: (Uri) -> Unit = {},
+    onSaveAllHarnessLogs: (Uri) -> Unit = {},
 ) {
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
     var expanded by rememberSaveable { mutableStateOf<SettingsSection?>(null) }
     var terminalCleared by remember { mutableStateOf(false) }
     var showReliabilityHelp by rememberSaveable { mutableStateOf(false) }
+    var pendingLogExport by remember { mutableStateOf<((Uri) -> Unit)?>(null) }
+    val logExportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/plain"),
+    ) { uri ->
+        val action = pendingLogExport
+        pendingLogExport = null
+        if (uri != null) action?.invoke(uri)
+    }
     var stackPendingRemoval by remember { mutableStateOf<DevStack?>(null) }
 
     stackPendingRemoval?.let { stack ->
@@ -196,6 +209,31 @@ fun SettingsScreen(
             title = { Text(stringResource(R.string.st_harness_log_open_title), style = MaterialTheme.typography.titleMedium) },
             text = {
                 Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+                    if (log.issues.isNotEmpty()) {
+                        Text(
+                            stringResource(R.string.st_harness_log_issues, log.issues.size),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        SelectionContainer {
+                            Text(
+                                log.issues.joinToString("\n"),
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            stringResource(R.string.st_harness_log_full),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                    }
                     SelectionContainer {
                         Text(
                             log.text.ifBlank { stringResource(R.string.st_harness_log_missing) },
@@ -207,8 +245,19 @@ fun SettingsScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { clipboard.setText(AnnotatedString(log.text)) }) {
-                    Text(stringResource(R.string.st_harness_log_copy))
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(onClick = { clipboard.setText(AnnotatedString(log.text)) }) {
+                        Text(stringResource(R.string.st_harness_log_copy))
+                    }
+                    TextButton(
+                        enabled = log.text.isNotBlank(),
+                        onClick = {
+                            pendingLogExport = onSaveHarnessLog
+                            logExportLauncher.launch(log.id)
+                        },
+                    ) {
+                        Text(stringResource(R.string.st_harness_log_save))
+                    }
                 }
             },
             dismissButton = { TextButton(onClick = onCloseHarnessLog) { Text(stringResource(R.string.action_close)) } },
@@ -610,6 +659,15 @@ fun SettingsScreen(
                         IconButton(onClick = onRefreshHarnessLogs) {
                             Icon(Icons.Default.Refresh, stringResource(R.string.diagnostics_refresh), Modifier.size(18.dp))
                         }
+                        IconButton(
+                            onClick = {
+                                pendingLogExport = onSaveAllHarnessLogs
+                                logExportLauncher.launch("pocketdev-harness-logs.txt")
+                            },
+                            enabled = state.harnessLogs.isNotEmpty(),
+                        ) {
+                            Icon(Icons.Default.Download, stringResource(R.string.st_harness_logs_download), Modifier.size(18.dp))
+                        }
                         TextButton(onClick = onClearHarnessLogs, enabled = state.harnessLogs.isNotEmpty()) {
                             Text(stringResource(R.string.st_harness_logs_clear), color = MaterialTheme.colorScheme.error)
                         }
@@ -621,9 +679,26 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     } else {
-                        state.harnessLogs.forEach { entry ->
-                            HarnessLogRow(entry) { onOpenHarnessLog(entry.id) }
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                        // Condensed list fixed to roughly six rows: scroll inside the
+                        // container instead of stretching the settings screen.
+                        Surface(
+                            color = Color.Transparent,
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Column(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(264.dp)
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(horizontal = 12.dp),
+                            ) {
+                                state.harnessLogs.forEach { entry ->
+                                    HarnessLogRow(entry) { onOpenHarnessLog(entry.id) }
+                                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                                }
+                            }
                         }
                     }
                 }
@@ -1314,7 +1389,7 @@ private fun HarnessLimitField(
 @Composable
 private fun HarnessLogRow(entry: RuntimeLogEntry, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 10.dp),
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -1329,6 +1404,15 @@ private fun HarnessLogRow(entry: RuntimeLogEntry, onClick: () -> Unit) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            if (entry.errors.isNotEmpty()) {
+                Text(
+                    text = "${stringResource(R.string.st_harness_log_issues, entry.errors.size)} · ${entry.errors.first()}",
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.error,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
         Text(
             if (entry.failed) {

@@ -2589,6 +2589,8 @@ private fun RootScreenHost(
                     onOpenHarnessLog = viewModel::openHarnessLog,
                     onCloseHarnessLog = viewModel::closeHarnessLog,
                     onClearHarnessLogs = viewModel::clearHarnessLogs,
+                    onSaveHarnessLog = viewModel::saveHarnessLog,
+                    onSaveAllHarnessLogs = viewModel::saveAllHarnessLogs,
                 )
             }
         }
@@ -6599,6 +6601,7 @@ private fun ClaudeActivityDisclosure(
     isRunning: Boolean = false,
 ) {
     var expandedItems by rememberSaveable { mutableStateOf(emptyList<Int>()) }
+    var detailItem by remember { mutableStateOf<ActivityItem?>(null) }
     // Older saved chats may contain hundreds of polling steps. Rendering all of them inside
     // one lazy-list item can monopolize the UI thread, so show the latest useful window.
     val visibleItems = items.takeLast(32)
@@ -6624,9 +6627,17 @@ private fun ClaudeActivityDisclosure(
                     onToggle = {
                         expandedItems = if (index in expandedItems) expandedItems - index else expandedItems + index
                     },
+                    onDetail = { detailItem = item },
                 )
                 if (index in expandedItems) ActivityExpandedDetail(item, activityDetail(item))
             }
+        }
+        detailItem?.let { selected ->
+            ActivityDetailDialog(
+                title = activityDisplayName(selected),
+                text = selected.fullDetail.ifBlank { selected.detail },
+                onDismiss = { detailItem = null },
+            )
         }
     }
 }
@@ -6762,16 +6773,24 @@ private fun AnimatedThinkingDots(
 }
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 private fun ActivitySummaryRow(
     item: ActivityItem?,
     text: String,
     expanded: Boolean,
     showProgress: Boolean,
     onToggle: () -> Unit,
+    onDetail: (() -> Unit)? = null,
 ) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(vertical = 6.dp),
+        Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = onToggle,
+                onLongClick = onDetail,
+            )
+            .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -6840,6 +6859,39 @@ private fun ActivityExpandedDetail(item: ActivityItem?, detail: String) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+}
+
+/** Long-press popup showing the full, untruncated text behind a collapsed activity row. */
+@Composable
+private fun ActivityDetailDialog(title: String, text: String, onDismiss: () -> Unit) {
+    val clipboard = LocalClipboardManager.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title, style = MaterialTheme.typography.titleSmall) },
+        text = {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 420.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                SelectionContainer {
+                    Text(
+                        text.ifBlank { "—" },
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { clipboard.setText(AnnotatedString(text)) }) {
+                Text(stringResource(R.string.ws_activity_detail_copy))
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) } },
+    )
 }
 
 @Composable
@@ -7407,12 +7459,16 @@ private fun BrandMark(modifier: Modifier = Modifier, compact: Boolean = false) {
 
 /**
  * Floating subagent monitor pinned to the middle-left edge of the chat: shows how
- * many subagents are live, and expands on tap to list each one's ask and current
- * step. Only Qwen Code emits subagent events, so it stays hidden for other agents.
+ * many subagents this task used (running ones pulse, finished stay reviewable).
+ * Tapping the pill expands the list; tapping an entry opens its thinking/reply
+ * transcript. Only Qwen Code emits subagent events, so it stays hidden for the
+ * other agents.
  */
 @Composable
 private fun SubagentMonitor(subagents: List<SubagentStatus>, modifier: Modifier = Modifier) {
     var expanded by rememberSaveable { mutableStateOf(false) }
+    var openCallId by remember { mutableStateOf<String?>(null) }
+    val shown = subagents.firstOrNull { it.callId == openCallId }
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
@@ -7448,18 +7504,23 @@ private fun SubagentMonitor(subagents: List<SubagentStatus>, modifier: Modifier 
             ) {
                 Column(
                     modifier = Modifier
-                        .widthIn(max = 250.dp)
+                        .widthIn(max = 260.dp)
                         .padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
-                        text = stringResource(R.string.ws_subagents_running, subagents.size),
+                        text = stringResource(R.string.ws_subagents_title),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     subagents.forEach { subagent ->
-                        Column {
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable { openCallId = subagent.callId }
+                                .padding(vertical = 3.dp),
+                        ) {
                             Text(
                                 text = subagent.description,
                                 fontSize = 12.sp,
@@ -7468,11 +7529,19 @@ private fun SubagentMonitor(subagents: List<SubagentStatus>, modifier: Modifier 
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
                             Text(
-                                text = subagent.activity.ifBlank { stringResource(R.string.ws_subagent_starting) },
+                                text = if (subagent.running) {
+                                    subagent.activity.ifBlank { stringResource(R.string.ws_subagent_starting) }
+                                } else {
+                                    stringResource(R.string.ws_subagent_done)
+                                },
                                 fontSize = 11.sp,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = if (subagent.running) {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                } else {
+                                    MaterialTheme.colorScheme.primary
+                                },
                             )
                         }
                     }
@@ -7480,4 +7549,67 @@ private fun SubagentMonitor(subagents: List<SubagentStatus>, modifier: Modifier 
             }
         }
     }
+    shown?.let { subagent ->
+        SubagentTranscriptDialog(subagent = subagent, onDismiss = { openCallId = null })
+    }
+}
+
+/** Scrollable thinking/reply transcript of one subagent, opened from the monitor. */
+@Composable
+private fun SubagentTranscriptDialog(subagent: SubagentStatus, onDismiss: () -> Unit) {
+    val clipboard = LocalClipboardManager.current
+    val fullTranscript = subagent.entries.joinToString("\n\n") { entry ->
+        "${entry.title}:\n${entry.detail}"
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                subagent.description,
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+        text = {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 460.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                if (subagent.entries.isEmpty()) {
+                    Text(
+                        stringResource(R.string.ws_subagent_transcript_empty),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                subagent.entries.forEach { entry ->
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = when (entry.title) {
+                                "Reply" -> stringResource(R.string.ws_subagent_reply)
+                                else -> stringResource(R.string.ws_subagent_thinking)
+                            },
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        MarkdownText(
+                            markdown = entry.detail,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { clipboard.setText(AnnotatedString(fullTranscript)) }) {
+                Text(stringResource(R.string.ws_activity_detail_copy))
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) } },
+    )
 }

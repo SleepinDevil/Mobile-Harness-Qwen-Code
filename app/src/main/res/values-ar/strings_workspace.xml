@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="ws_subagents_running">‏%1$d وكلاء فرعيون يعملون</string>
     <string name="ws_subagent_starting">جارٍ البدء…</string>
+    <string name="ws_subagents_title">‏وكلاء فرعيون</string>
+    <string name="ws_subagent_done">‏تم</string>
+    <string name="ws_subagent_thinking">‏تفكير</string>
+    <string name="ws_subagent_reply">‏رد</string>
+    <string name="ws_subagent_transcript_empty">‏لا توجد رسائل تفكير أو رد حتى الآن — لم يشغّل هذا الوكيل الفرعي سوى الأدوات.</string>
+    <string name="ws_activity_detail_copy">‏نسخ</string>
     <string name="ws_agy_setup_title">إعداد Antigravity</string>
     <string name="ws_agy_connect_google">اربط حسابك على Google</string>
     <string name="ws_agy_connect_desc">يشغّل PocketDev أداة agy CLI الرسمية من Google داخل بيئة Linux الخاصة به. تتولى Google المصادقة وتحتفظ agy بالجلسة المحفوظة.</string>

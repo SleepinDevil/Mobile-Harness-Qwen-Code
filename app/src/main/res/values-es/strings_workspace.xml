@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="ws_subagents_running">%1$d subagentes en ejecución</string>
     <string name="ws_subagent_starting">Iniciando…</string>
+    <string name="ws_subagents_title">Subagentes</string>
+    <string name="ws_subagent_done">Hecho</string>
+    <string name="ws_subagent_thinking">Pensamiento</string>
+    <string name="ws_subagent_reply">Respuesta</string>
+    <string name="ws_subagent_transcript_empty">Aún no hay mensajes de pensamiento ni respuesta: este subagente solo ha ejecutado herramientas.</string>
+    <string name="ws_activity_detail_copy">Copiar</string>
     <string name="ws_agy_setup_title">Configurar Antigravity</string>
     <string name="ws_agy_connect_google">Conecta tu cuenta de Google</string>
     <string name="ws_agy_connect_desc">PocketDev ejecuta la CLI oficial agy de Google dentro de su entorno Linux privado. Google gestiona la autenticación y agy guarda la sesión.</string>

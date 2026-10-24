@@ -135,6 +135,12 @@
     <string name="st_harness_logs_cleared">تم مسح سجلات المحرك</string>
     <string name="st_harness_log_open_title">سجل المحرك</string>
     <string name="st_harness_log_copy">نسخ السجل</string>
+    <string name="st_harness_log_save">‏حفظ على الجهاز</string>
+    <string name="st_harness_log_issues">‏%1$d رسائل مهمة</string>
+    <string name="st_harness_log_full">‏النص الكامل</string>
+    <string name="st_harness_logs_download">‏تنزيل كل السجلات</string>
+    <string name="st_harness_logs_saved">‏تم حفظ السجل</string>
+    <string name="st_harness_logs_save_failed">‏تعذر حفظ السجل</string>
     <string name="st_harness_log_missing">هذا السجل لم يعد متاحًا.</string>
     <string name="st_harness_log_failed">فشل</string>
     <string name="st_harness_log_failed_exit">فشل · الخروج %1$d</string>

@@ -280,7 +280,7 @@ private data class ImportedZipProject(
 )
 
 /** Open Settings → Harness settings log (id = stored log file name). */
-data class HarnessLogContent(val id: String, val text: String)
+data class HarnessLogContent(val id: String, val text: String, val issues: List<String> = emptyList())
 
 data class AppUiState(
     val startupStage: StartupStage = StartupStage.CHECKING,
@@ -1037,13 +1037,63 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun openHarnessLog(id: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val content = runtimeLogs.read(id)?.let { HarnessLogContent(id, it) }
+            val issues = runtimeLogs.entries().firstOrNull { it.id == id }?.errors.orEmpty()
+            val content = runtimeLogs.read(id)?.let { HarnessLogContent(id, it, issues) }
             withContext(Dispatchers.Main) { _state.update { it.copy(harnessLogContent = content) } }
         }
     }
 
     fun closeHarnessLog() {
         _state.update { it.copy(harnessLogContent = null) }
+    }
+
+    /** Writes the currently open harness log to the document picked via the SAF dialog. */
+    fun saveHarnessLog(uri: Uri) {
+        val content = _state.value.harnessLogContent ?: return
+        writeTextToDocument(uri, content.text)
+    }
+
+    /** Exports every recorded run (notable lines + raw transcript) to the picked document. */
+    fun saveAllHarnessLogs(uri: Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val stamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
+            val text = buildString {
+                runtimeLogs.entries().sortedBy { it.startedAtMillis }.forEach { entry ->
+                    append("==== ").append(stamp.format(Date(entry.startedAtMillis)))
+                    append(" agent=").append(entry.agentId)
+                    if (entry.projectSlug.isNotBlank()) append(" project=").append(entry.projectSlug)
+                    append(" ").append(if (entry.failed) "FAILED" else "OK")
+                    entry.exitCode?.let { append(" exit=").append(it) }
+                    append(" ====\n")
+                    if (entry.errors.isNotEmpty()) {
+                        append("-- notable --\n").append(entry.errors.joinToString("\n")).append('\n')
+                    }
+                    append("-- transcript --\n").append(runtimeLogs.read(entry.id).orEmpty()).append("\n\n")
+                }
+            }
+            writeTextToDocument(uri, text)
+        }
+    }
+
+    private fun writeTextToDocument(uri: Uri, text: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = runCatching {
+                getApplication<Application>().contentResolver.openOutputStream(uri)
+                    ?.use { stream -> stream.write(text.toByteArray()) }
+                    ?: error("output stream unavailable")
+            }
+            withContext(Dispatchers.Main) {
+                _state.update {
+                    it.copy(
+                        toastMessage = if (result.isSuccess) {
+                            str(R.string.st_harness_logs_saved)
+                        } else {
+                            str(R.string.st_harness_logs_save_failed)
+                        },
+                    )
+                }
+            }
+        }
     }
 
     fun clearHarnessLogs() {
@@ -5173,14 +5223,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         val replaceFallback = current.activeThinkingBlockId == null &&
                             process.size == 1 && process.first().title == "Think"
                         if (replaceFallback) {
-                            process[0] = ActivityItem("Think", initial, event.isFinal)
+                            process[0] = ActivityItem("Think", initial, event.isFinal, fullDetail = event.fullText)
                         } else {
-                            process += ActivityItem("Think", initial, event.isFinal)
+                            process += ActivityItem("Think", initial, event.isFinal, fullDetail = event.fullText)
                         }
                     } else if (current.activeThinkingBlockId == event.blockId && existingIndex >= 0 && summary.isNotBlank()) {
                         process[existingIndex] = process[existingIndex].copy(
                             detail = summary,
                             isComplete = event.isFinal,
+                            fullDetail = event.fullText,
                         )
                     } else {
                         return@update current
@@ -5200,13 +5251,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         liveThinking = false,
                         activeThinkingBlockId = null,
                         activity = (listOf(
-                            ActivityItem("Running ${event.toolName}", event.detail, false, isCommand = event.toolName == "Bash"),
+                            ActivityItem("Running ${event.toolName}", event.detail, false, isCommand = event.toolName == "Bash", fullDetail = event.fullDetail),
                         ) + current.activity.map { if (!it.isComplete) it.copy(isComplete = true) else it })
                             .take(MAX_VISIBLE_WORK_ITEMS),
                     )
                     appendWorkItem(
                         planned,
-                        ActivityItem("Running ${event.toolName}", event.detail, false, isCommand = event.toolName == "Bash"),
+                        ActivityItem(
+                            "Running ${event.toolName}",
+                            event.detail,
+                            false,
+                            isCommand = event.toolName == "Bash",
+                            fullDetail = event.fullDetail,
+                        ),
                     )
                 }
                 is RuntimeEvent.ToolProgress -> {
@@ -5253,14 +5310,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                                 "${event.toolName} completed",
                                 runningItem.detail.ifBlank { summary },
                                 isCommand = event.toolName == "Bash",
+                                fullDetail = event.fullDetail.ifBlank { runningItem.fullDetail },
                             ).let(::boundedActivityItem)
                         }
                     } else {
-                        current.liveProcess + boundedActivityItem(ActivityItem(
-                            "${event.toolName} completed",
-                            summary,
-                            isCommand = event.toolName == "Bash",
-                        ))
+                        current.liveProcess + boundedActivityItem(
+                            ActivityItem(
+                                "${event.toolName} completed",
+                                summary,
+                                isCommand = event.toolName == "Bash",
+                                fullDetail = event.fullDetail,
+                            ),
+                        )
                     }
                     current.copy(
                         activity = (listOf(ActivityItem(summary, event.toolName)) + current.activity)
@@ -5309,15 +5370,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         },
                     )
                 }
+                is RuntimeEvent.SubagentThinking -> appendSubagentEntry(current, event.callId, "Thinking", event.text)
+                is RuntimeEvent.SubagentReply -> appendSubagentEntry(current, event.callId, "Reply", event.text)
                 is RuntimeEvent.SubagentFinished -> current.copy(
-                    subagents = current.subagents.filterNot { it.callId == event.callId },
+                    subagents = current.subagents.map { sub ->
+                        if (sub.callId == event.callId) sub.copy(running = false) else sub
+                    },
                 )
                 is RuntimeEvent.SessionCompleted -> {
                     val finishedAt = System.currentTimeMillis()
                     attachTaskDuration(finishWorkSegment(current, finishedAt), finishedAt).copy(
                         isRunning = false,
                         activeSessionId = null,
-                        subagents = emptyList(),
+                        subagents = current.subagents.map { it.copy(running = false) },
                         activity = listOf(ActivityItem(str(R.string.vm_task_completed), str(R.string.vm_agent_finished, current.agentKind.localizedTitle(getApplication())))) +
                             current.activity.map { if (!it.isComplete) it.copy(isComplete = true) else it },
                         taskFinishedAtMillis = finishedAt,
@@ -5336,7 +5401,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     ).copy(
                         isRunning = false,
                         activeSessionId = null,
-                        subagents = emptyList(),
+                        subagents = current.subagents.map { it.copy(running = false) },
                         pendingApproval = null,
                         toastMessage = displayReason.takeIf {
                             event.reason.contains("user not found", true) ||
@@ -5501,9 +5566,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun boundedActivityItem(item: ActivityItem): ActivityItem {
-        if (item.detail.length <= MAX_ACTIVITY_DETAIL_CHARS) return item
-        return item.copy(
-            detail = "… Earlier output omitted …\n" + item.detail.takeLast(MAX_ACTIVITY_DETAIL_CHARS),
+        val capped = if (item.fullDetail.length > MAX_ACTIVITY_FULL_DETAIL_CHARS) {
+            item.copy(fullDetail = item.fullDetail.take(MAX_ACTIVITY_FULL_DETAIL_CHARS))
+        } else {
+            item
+        }
+        if (capped.detail.length <= MAX_ACTIVITY_DETAIL_CHARS) return capped
+        return capped.copy(
+            detail = "… Earlier output omitted …\n" + capped.detail.takeLast(MAX_ACTIVITY_DETAIL_CHARS),
+        )
+    }
+
+    /** Appends one transcript block ("Thinking"/"Reply") to a subagent's live status. */
+    private fun appendSubagentEntry(current: AppUiState, callId: String, title: String, text: String): AppUiState {
+        val existing = current.subagents.firstOrNull { it.callId == callId }
+        val updated = SubagentStatus(
+            callId = callId,
+            description = existing?.description ?: "Subagent",
+            activity = existing?.activity.orEmpty(),
+            running = existing?.running ?: true,
+            entries = ((existing?.entries ?: emptyList()) + ActivityItem(title, text)).takeLast(MAX_SUBAGENT_ENTRIES),
+        )
+        return current.copy(
+            subagents = if (existing == null) {
+                current.subagents + updated
+            } else {
+                current.subagents.map { if (it.callId == callId) updated else it }
+            },
         )
     }
 
@@ -5546,6 +5635,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private const val HARNESS_LIMIT_MAX_SUBAGENTS = "max_subagents"
         private const val HARNESS_FLAG_SUBAGENTS = "subagents_enabled"
         private const val MAX_ACTIVITY_DETAIL_CHARS = 8_000
+        private const val MAX_ACTIVITY_FULL_DETAIL_CHARS = 100_000
+        private const val MAX_SUBAGENT_ENTRIES = 60
         private const val NOISY_ITEM_SCAN_CHARS = 320
         private const val TRANSCRIPT_WRITE_DEBOUNCE_MS = 500L
         private const val DIAGNOSTICS_REFRESH_COOLDOWN_MS = 1_000L

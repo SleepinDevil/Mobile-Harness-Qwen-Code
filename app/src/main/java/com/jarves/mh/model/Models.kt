@@ -319,11 +319,13 @@ sealed interface RuntimeEvent {
         val blockId: Long,
         val startsNewBlock: Boolean = false,
         val isFinal: Boolean = false,
+        val fullText: String = "",
     ) : RuntimeEvent
     data class ToolStarted(
         override val sessionId: String,
         val toolName: String,
         val detail: String,
+        val fullDetail: String = "",
     ) : RuntimeEvent
     data class ToolProgress(
         override val sessionId: String,
@@ -338,7 +340,12 @@ sealed interface RuntimeEvent {
     data class ToolRequested(override val sessionId: String, val request: ToolRequest) : RuntimeEvent
     data class ToolApproved(override val sessionId: String, val approvalId: String) : RuntimeEvent
     data class ToolRejected(override val sessionId: String, val approvalId: String) : RuntimeEvent
-    data class ToolCompleted(override val sessionId: String, val toolName: String, val summary: String) : RuntimeEvent
+    data class ToolCompleted(
+        override val sessionId: String,
+        val toolName: String,
+        val summary: String,
+        val fullDetail: String = "",
+    ) : RuntimeEvent
     data class FilesChanged(override val sessionId: String, val changes: List<ChangeItem>) : RuntimeEvent {
         val paths: List<String> get() = changes.map { it.path }
     }
@@ -354,16 +361,33 @@ sealed interface RuntimeEvent {
         val description: String,
         val detail: String,
     ) : RuntimeEvent
+    data class SubagentThinking(
+        override val sessionId: String,
+        val callId: String,
+        val text: String,
+    ) : RuntimeEvent
+    data class SubagentReply(
+        override val sessionId: String,
+        val callId: String,
+        val text: String,
+    ) : RuntimeEvent
     data class SubagentFinished(override val sessionId: String, val callId: String) : RuntimeEvent
     data class SessionCompleted(override val sessionId: String) : RuntimeEvent
     data class SessionFailed(override val sessionId: String, val reason: String) : RuntimeEvent
 }
 
-/** One delegated subagent shown live in the chat overlay: what it was asked for and its current step. */
+/**
+ * One delegated subagent shown live in the chat overlay: what it was asked for,
+ * its current step, and the thinking/reply transcript collected so far. Finished
+ * subagents stay listed (running = false) until the next task so their work can
+ * still be reviewed.
+ */
 data class SubagentStatus(
     val callId: String,
     val description: String,
     val activity: String = "",
+    val running: Boolean = true,
+    val entries: List<ActivityItem> = emptyList(),
 )
 
 data class ChatMessage(
@@ -414,4 +438,5 @@ data class ActivityItem(
     val detail: String,
     val isComplete: Boolean = true,
     val isCommand: Boolean = false,
+    val fullDetail: String = "",
 )

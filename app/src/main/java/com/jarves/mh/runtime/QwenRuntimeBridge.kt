@@ -460,7 +460,9 @@ class QwenRuntimeBridge(
                         val toolName = toolNames.remove(toolId) ?: "Tool"
                         val result = block.optString("content")
                             .ifBlank { if (block.optBoolean("is_error")) "Tool failed" else "Completed successfully" }
-                        eventBus.emit(RuntimeEvent.ToolCompleted(sessionId, toolName, sanitizeForDisplay(result)))
+                        eventBus.emit(
+                            RuntimeEvent.ToolCompleted(sessionId, toolName, sanitizeForDisplay(result), fullDetail = sanitizeFull(result)),
+                        )
                         if (toolName == "agent" && subagentDescriptions.remove(toolId) != null) {
                             eventBus.emit(RuntimeEvent.SubagentFinished(sessionId, toolId))
                         }
@@ -482,10 +484,10 @@ class QwenRuntimeBridge(
     }
 
     /**
-     * Surfaces subagent tool activity as attributed progress rows. Text, thinking,
-     * and the subagent's own end_turn messages are intentionally dropped: they are
-     * internal to the subagent, and honouring its end_turn would complete (and
-     * kill) the whole session while the main agent is still working.
+     * Surfaces subagent tool activity as attributed progress rows and collects the
+     * subagent's thinking/reply blocks into a reviewable transcript. The subagent's
+     * own end_turn is intentionally dropped: honouring it would complete (and kill)
+     * the whole session while the main agent is still working.
      */
     private suspend fun consumeSubagentJsonEvent(sessionId: String, parentCallId: String, json: JSONObject) {
         when (json.optString("type")) {
@@ -493,16 +495,24 @@ class QwenRuntimeBridge(
                 val content = json.optJSONObject("message")?.optJSONArray("content") ?: return
                 for (index in 0 until content.length()) {
                     val block = content.optJSONObject(index) ?: continue
-                    if (block.optString("type") == "tool_use") {
-                        val (name, detail) = emitToolStarted(sessionId, block, subagent = true)
-                        eventBus.emit(
-                            RuntimeEvent.SubagentActivity(
-                                sessionId,
-                                parentCallId,
-                                subagentDescriptions[parentCallId] ?: "Subagent",
-                                listOf(name, detail).filter(String::isNotBlank).joinToString(" · "),
-                            ),
-                        )
+                    when (block.optString("type")) {
+                        "tool_use" -> {
+                            val (name, detail) = emitToolStarted(sessionId, block, subagent = true)
+                            eventBus.emit(
+                                RuntimeEvent.SubagentActivity(
+                                    sessionId,
+                                    parentCallId,
+                                    subagentDescriptions[parentCallId] ?: "Subagent",
+                                    listOf(name, detail).filter(String::isNotBlank).joinToString(" · "),
+                                ),
+                            )
+                        }
+                        "thinking" -> block.optString("thinking").takeIf(String::isNotBlank)?.let {
+                            eventBus.emit(RuntimeEvent.SubagentThinking(sessionId, parentCallId, sanitizeFull(it)))
+                        }
+                        "text" -> block.optString("text").takeIf(String::isNotBlank)?.let {
+                            eventBus.emit(RuntimeEvent.SubagentReply(sessionId, parentCallId, sanitizeFull(it)))
+                        }
                     }
                 }
             }
@@ -515,7 +525,9 @@ class QwenRuntimeBridge(
                         val toolName = toolNames.remove(toolId) ?: "Subagent tool"
                         val result = block.optString("content")
                             .ifBlank { if (block.optBoolean("is_error")) "Tool failed" else "Completed successfully" }
-                        eventBus.emit(RuntimeEvent.ToolCompleted(sessionId, toolName, sanitizeForDisplay(result)))
+                        eventBus.emit(
+                            RuntimeEvent.ToolCompleted(sessionId, toolName, sanitizeForDisplay(result), fullDetail = sanitizeFull(result)),
+                        )
                     }
                 }
             }
@@ -541,6 +553,7 @@ class QwenRuntimeBridge(
                     blockId = currentThinkingBlockId,
                     startsNewBlock = startsNewBlock,
                     isFinal = isFinal,
+                    fullText = sanitizeFull(text),
                 ),
             )
             pushForegroundProgress(R.string.rt_bridge_thinking)
@@ -591,7 +604,10 @@ class QwenRuntimeBridge(
             subagentDescriptions[id] = detail
             eventBus.emit(RuntimeEvent.SubagentStarted(sessionId, id, detail))
         }
-        eventBus.emit(RuntimeEvent.ToolStarted(sessionId, displayName, sanitizeForDisplay(detail.ifBlank { "Running $displayName" })))
+        val rawDetail = detail.ifBlank { "Running $displayName" }
+        eventBus.emit(
+            RuntimeEvent.ToolStarted(sessionId, displayName, sanitizeForDisplay(rawDetail), fullDetail = sanitizeFull(rawDetail)),
+        )
         pushForegroundProgress(R.string.rt_bridge_running_tool, displayName, detail.replace(Regex("\\s+"), " ").trim().take(80).ifBlank { displayName })
         return name to detail
     }
@@ -631,14 +647,23 @@ class QwenRuntimeBridge(
         }
     }
 
-    private fun sanitizeForDisplay(value: String): String {
-        return value
-            .replace(Regex("sk-[A-Za-z0-9_-]{8,}"), "sk-••••")
-            .replace(Regex("(?i)(authorization|api[_-]?key)\\s*[:=]\\s*[^\\s,}]+"), "${'$'}1: ••••")
-            .replace(Regex("\\s+"), " ")
-            .trim()
-            .take(600)
-    }
+    private fun sanitizeForDisplay(value: String): String = redactSecrets(value)
+        .replace(Regex("\\s+"), " ")
+        .trim()
+        .take(600)
+
+    /**
+     * Redacted, newline-preserving copy of [value] for the long-press "full detail"
+     * dialog: same secret scrubbing as [sanitizeForDisplay] but no whitespace
+     * collapsing and a generous cap so real output survives.
+     */
+    private fun sanitizeFull(value: String): String =
+        if (value.isBlank()) "" else redactSecrets(value).trim().take(100_000)
+
+    private fun redactSecrets(value: String): String = value
+        .replace(Regex("sk-[A-Za-z0-9_-]{8,}"), "sk-••••")
+        .replace(Regex("(?i)(authorization|api[_-]?key)\\s*[:=]\\s*[^\\s,}]+"), "${'$'}1: ••••")
+        .replace(Regex("Bearer\\s+[A-Za-z0-9._~+/-]{12,}={0,2}", RegexOption.IGNORE_CASE), "Bearer ••••")
 
     /** Per-session Qwen Code settings: provider route, yolo approvals, hard limits. */
     private fun writeQwenSettings(rootfs: File, route: QwenRoute) {

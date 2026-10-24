@@ -135,6 +135,12 @@
     <string name="st_harness_logs_cleared">引擎日志已清除</string>
     <string name="st_harness_log_open_title">引擎日志</string>
     <string name="st_harness_log_copy">复制日志</string>
+    <string name="st_harness_log_save">保存到设备</string>
+    <string name="st_harness_log_issues">%1$d 条重要消息</string>
+    <string name="st_harness_log_full">完整记录</string>
+    <string name="st_harness_logs_download">下载全部日志</string>
+    <string name="st_harness_logs_saved">日志已保存</string>
+    <string name="st_harness_logs_save_failed">日志保存失败</string>
     <string name="st_harness_log_missing">该日志已不可用。</string>
     <string name="st_harness_log_failed">失败</string>
     <string name="st_harness_log_failed_exit">失败 · 退出码 %1$d</string>

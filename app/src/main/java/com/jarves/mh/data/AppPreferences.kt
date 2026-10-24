@@ -415,6 +415,9 @@ class AppPreferences(private val context: Context) {
                             put("detail", item.detail)
                             put("isComplete", item.isComplete)
                             put("isCommand", item.isCommand)
+                            // Trimmed copy: the full-detail popup survives chat reloads
+                            // without letting transcript files balloon during a task.
+                            put("fullDetail", item.fullDetail.take(20_000))
                         })
                     }
                 })
@@ -477,6 +480,7 @@ class AppPreferences(private val context: Context) {
                                         detail = item.optString("detail"),
                                         isComplete = item.optBoolean("isComplete", true),
                                         isCommand = item.optBoolean("isCommand", false),
+                                        fullDetail = item.optString("fullDetail"),
                                     )
                                 }
                             }.getOrNull()

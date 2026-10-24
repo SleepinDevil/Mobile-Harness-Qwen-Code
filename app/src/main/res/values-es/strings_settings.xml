@@ -135,6 +135,12 @@
     <string name="st_harness_logs_cleared">Registros del agente borrados</string>
     <string name="st_harness_log_open_title">Registro del agente</string>
     <string name="st_harness_log_copy">Copiar registro</string>
+    <string name="st_harness_log_save">Guardar en el dispositivo</string>
+    <string name="st_harness_log_issues">%1$d mensajes destacados</string>
+    <string name="st_harness_log_full">Transcripción completa</string>
+    <string name="st_harness_logs_download">Descargar todos los registros</string>
+    <string name="st_harness_logs_saved">Registro guardado</string>
+    <string name="st_harness_logs_save_failed">No se pudo guardar el registro</string>
     <string name="st_harness_log_missing">Este registro ya no está disponible.</string>
     <string name="st_harness_log_failed">Error</string>
     <string name="st_harness_log_failed_exit">Error · salida %1$d</string>
