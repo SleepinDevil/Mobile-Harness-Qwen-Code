@@ -112,6 +112,14 @@
     <string name="st_update_channel_overridden">已覆盖 · 仅限调试</string>
     <string name="st_use_and_check">使用并检查</string>
     <string name="st_use_custom_model_id">使用自定义模型 ID：</string>
+    <string name="st_harness_qwen_context">上下文窗口（令牌）</string>
+    <string name="st_harness_qwen_context_support">服务器真实的上下文长度。对未知模型 Qwen Code 默认按 200K 估算，可能超出自托管服务器较小的窗口；0 表示保持该默认值。</string>
+    <string name="st_harness_qwen_compact">自动压缩阈值（%）</string>
+    <string name="st_harness_qwen_compact_support">会话占满上下文窗口此比例后自动总结。</string>
+    <string name="st_harness_qwen_subagents">子代理</string>
+    <string name="st_harness_qwen_subagents_support">允许 Qwen Code 将旁路任务委派给并行子代理。更耗内存和模型调用；关闭时相关工具会被完全移除。</string>
+    <string name="st_harness_qwen_max_subagents">最大并发子代理数</string>
+    <string name="st_harness_qwen_max_subagents_support">同时运行的子代理数量上限。</string>
     <string name="st_harness_title">智能体设置</string>
     <string name="st_harness_subtitle">编码代理的轮次上限与运行日志</string>
     <string name="st_harness_max_turns">最大会话轮数</string>

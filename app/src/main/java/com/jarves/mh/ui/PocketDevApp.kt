@@ -32,6 +32,10 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -232,6 +236,7 @@ import com.jarves.mh.model.ProviderProfile
 import com.jarves.mh.model.inferredDshApiForUrl
 import com.jarves.mh.model.providersForAgent
 import com.jarves.mh.model.ToolRequest
+import com.jarves.mh.model.SubagentStatus
 import com.jarves.mh.model.WorkspaceEntry
 import com.jarves.mh.model.projectSlug
 import com.jarves.mh.runtime.RuntimeExecutionService
@@ -2575,6 +2580,10 @@ private fun RootScreenHost(
                     onClearRuntimeCache = viewModel::clearDeveloperRuntimeCache,
                     onSetHarnessMaxTurns = viewModel::setHarnessMaxTurns,
                     onSetHarnessMaxWallMinutes = viewModel::setHarnessMaxWallMinutes,
+                    onSetHarnessQwenContextWindowTokens = viewModel::setHarnessQwenContextWindowTokens,
+                    onSetHarnessQwenAutoCompactPercent = viewModel::setHarnessQwenAutoCompactPercent,
+                    onSetHarnessQwenSubagents = viewModel::setHarnessQwenSubagents,
+                    onSetHarnessQwenMaxSubagents = viewModel::setHarnessQwenMaxSubagents,
                     onResetHarnessLimits = viewModel::resetHarnessLimits,
                     onRefreshHarnessLogs = viewModel::refreshHarnessLogs,
                     onOpenHarnessLog = viewModel::openHarnessLog,
@@ -4784,6 +4793,14 @@ private fun WorkspaceScreen(
                     onKeepFileChange,
                 )
                 WorkspaceTab.PREVIEW -> PreviewTab(state.previewReady, state.previewUrl)
+            }
+            if (selectedTab == WorkspaceTab.CHAT && state.subagents.isNotEmpty()) {
+                SubagentMonitor(
+                    subagents = state.subagents,
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(start = 12.dp, top = 8.dp, bottom = 8.dp),
+                )
             }
         }
     }
@@ -7385,5 +7402,82 @@ private fun BrandMark(modifier: Modifier = Modifier, compact: Boolean = false) {
             modifier = Modifier.size(iconSize),
             tint = primary,
         )
+    }
+}
+
+/**
+ * Floating subagent monitor pinned to the middle-left edge of the chat: shows how
+ * many subagents are live, and expands on tap to list each one's ask and current
+ * step. Only Qwen Code emits subagent events, so it stays hidden for other agents.
+ */
+@Composable
+private fun SubagentMonitor(subagents: List<SubagentStatus>, modifier: Modifier = Modifier) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Surface(
+            onClick = { expanded = !expanded },
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            tonalElevation = 2.dp,
+            shadowElevation = 4.dp,
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Icon(Icons.Filled.SmartToy, contentDescription = null, modifier = Modifier.size(16.dp))
+                Text("${subagents.size}", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+        AnimatedVisibility(
+            visible = expanded,
+            enter = fadeIn() + expandHorizontally(),
+            exit = fadeOut() + shrinkHorizontally(),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                tonalElevation = 3.dp,
+                shadowElevation = 6.dp,
+                color = MaterialTheme.colorScheme.surface,
+            ) {
+                Column(
+                    modifier = Modifier
+                        .widthIn(max = 250.dp)
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.ws_subagents_running, subagents.size),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    subagents.forEach { subagent ->
+                        Column {
+                            Text(
+                                text = subagent.description,
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                text = subagent.activity.ifBlank { stringResource(R.string.ws_subagent_starting) },
+                                fontSize = 11.sp,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }

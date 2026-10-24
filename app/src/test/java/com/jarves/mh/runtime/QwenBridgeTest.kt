@@ -8,6 +8,7 @@ import com.jarves.mh.model.providerProtocolForAgent
 import com.jarves.mh.model.providersForAgent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.json.JSONObject
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -154,4 +155,113 @@ class QwenBridgeTest {
             tempDir.deleteRecursively()
         }
     }
+
+    @Test
+    fun settingsJsonPinsContextWindowOnTheProviderEntry() {
+        val settings = qwenSettingsJson(
+            route = qwenTestRoute(),
+            maxSessionTurns = 25,
+            contextWindowTokens = 16_384,
+            autoCompactPercent = 85,
+            subagentsEnabled = false,
+        )
+        val entry = settings.getJSONObject("modelProviders")
+            .getJSONArray("openai")
+            .getJSONObject(0)
+        assertEquals(16_384, entry.getJSONObject("generationConfig").getInt("contextWindowSize"))
+    }
+
+    @Test
+    fun settingsJsonOmitsZeroContextWindowSoQwenGuesses() {
+        val settings = qwenSettingsJson(
+            route = qwenTestRoute(),
+            maxSessionTurns = 25,
+            contextWindowTokens = 0,
+            autoCompactPercent = 85,
+            subagentsEnabled = false,
+        )
+        val entry = settings.getJSONObject("modelProviders")
+            .getJSONArray("openai")
+            .getJSONObject(0)
+        assertFalse(entry.has("generationConfig"))
+    }
+
+    @Test
+    fun settingsJsonConvertsAutoCompactPercentToFraction() {
+        val settings = qwenSettingsJson(
+            route = qwenTestRoute(),
+            maxSessionTurns = 25,
+            contextWindowTokens = 8_192,
+            autoCompactPercent = 70,
+            subagentsEnabled = false,
+        )
+        assertEquals(0.7, settings.getJSONObject("context").getDouble("autoCompactThreshold"), 0.0001)
+    }
+
+    @Test
+    fun settingsJsonUnregistersSubagentToolsWhenDisabled() {
+        val settings = qwenSettingsJson(
+            route = qwenTestRoute(),
+            maxSessionTurns = 25,
+            contextWindowTokens = 0,
+            autoCompactPercent = 85,
+            subagentsEnabled = false,
+        )
+        val disabled = settings.getJSONObject("tools").getJSONArray("disabled")
+        val disabledNames = (0 until disabled.length()).map(disabled::getString)
+        for (tool in listOf("agent", "list_agents", "send_message", "task_stop")) {
+            assertTrue("missing $tool", disabledNames.contains(tool))
+        }
+        assertEquals(4, disabled.length())
+        assertFalse(settings.getJSONObject("model").has("maxSubagentDepth"))
+    }
+
+    @Test
+    fun settingsJsonKeepsSubagentsFlatWhenEnabled() {
+        val settings = qwenSettingsJson(
+            route = qwenTestRoute(),
+            maxSessionTurns = 25,
+            contextWindowTokens = 0,
+            autoCompactPercent = 85,
+            subagentsEnabled = true,
+        )
+        assertEquals(1, settings.getJSONObject("model").getInt("maxSubagentDepth"))
+        assertFalse(settings.getJSONObject("tools").has("disabled"))
+    }
+
+    @Test
+    fun launchEnvironmentCapsSubagentsOnlyWhenEnabled() {
+        val disabled = qwenLaunchEnvironment("OPENAI_API_KEY", "secret", false, 10)
+        assertFalse(disabled.containsKey("QWEN_CODE_MAX_BACKGROUND_AGENTS"))
+        assertEquals("secret", disabled["OPENAI_API_KEY"])
+
+        val enabled = qwenLaunchEnvironment("OPENAI_API_KEY", "secret", true, 3)
+        assertEquals("3", enabled["QWEN_CODE_MAX_BACKGROUND_AGENTS"])
+
+        val floored = qwenLaunchEnvironment("OPENAI_API_KEY", "secret", true, 0)
+        assertEquals("1", floored["QWEN_CODE_MAX_BACKGROUND_AGENTS"])
+    }
+
+    @Test
+    fun historyBudgetScalesWithConfiguredContextWindow() {
+        assertEquals(160_000, qwenHistoryCharacterBudget(0))
+        assertEquals(32_768, qwenHistoryCharacterBudget(16_384))
+        assertEquals(4_000, qwenHistoryCharacterBudget(1_024))
+        assertEquals(160_000, qwenHistoryCharacterBudget(2_000_000))
+    }
+
+    @Test
+    fun parentToolUseIdIdentifiesSubagentEnvelopes() {
+        assertNull(qwenParentToolUseId(JSONObject().put("type", "assistant")))
+        assertNull(qwenParentToolUseId(JSONObject().put("parent_tool_use_id", JSONObject.NULL)))
+        assertEquals("call-1", qwenParentToolUseId(JSONObject().put("parent_tool_use_id", "call-1")))
+    }
+
+    private fun qwenTestRoute() = QwenRoute(
+        authType = "openai",
+        envKey = "OPENAI_API_KEY",
+        baseUrl = "https://api.example.com/v1",
+        model = "glm-5.3",
+    )
 }
+

@@ -124,6 +124,14 @@ class AppPreferences(private val context: Context) {
         preferences.edit().putInt("agent_limit_${agent.stableId}_$key", value).apply()
     }
 
+    /** Boolean harness switches surfaced in Settings → Harness settings (e.g. subagents). */
+    fun agentFlag(agent: AgentKind, key: String, default: Boolean): Boolean =
+        preferences.getBoolean("agent_flag_${agent.stableId}_$key", default)
+
+    fun setAgentFlag(agent: AgentKind, key: String, value: Boolean) {
+        preferences.edit().putBoolean("agent_flag_${agent.stableId}_$key", value).apply()
+    }
+
     var lastAppUpdateCheckMillis: Long
         get() = preferences.getLong("last_app_update_check_millis", 0L)
         set(value) { preferences.edit().putLong("last_app_update_check_millis", value).apply() }

@@ -112,6 +112,14 @@
     <string name="st_update_channel_overridden">تم التجاوز · للتصحيح فقط</string>
     <string name="st_use_and_check">استخدام وتحقق</string>
     <string name="st_use_custom_model_id">استخدام معرّف نموذج مخصص:</string>
+    <string name="st_harness_qwen_context">نافذة السياق (رموز)</string>
+    <string name="st_harness_qwen_context_support">طول سياق خادمك الفعلي. يتوقع Qwen Code 200 ألف للنماذج غير المعروفة وقد يتجاوز نافذة أصغر مستضافة ذاتيًا؛ 0 يبقي ذلك الافتراضي.</string>
+    <string name="st_harness_qwen_compact">عتبة التلخيص التلقائي (٪)</string>
+    <string name="st_harness_qwen_compact_support">لخّص الجلسة عندما تملأ هذه النسبة من نافذة السياق.</string>
+    <string name="st_harness_qwen_subagents">الوكلاء الفرعيون</string>
+    <string name="st_harness_qwen_subagents_support">اسمح لـ Qwen Code بتفويض المهام الجانبية لوكلاء فرعيين متوازيين. يستهلك ذاكرة واستدعاءات أكثر؛ عند الإيقاف تُزال الأدوات تمامًا.</string>
+    <string name="st_harness_qwen_max_subagents">أقصى عدد وكلاء فرعيين متزامنين</string>
+    <string name="st_harness_qwen_max_subagents_support">حد أقصى للوكلاء الفرعيين العاملين في وقت واحد.</string>
     <string name="st_harness_title">إعدادات المحرك</string>
     <string name="st_harness_subtitle">حدود الأدوار وسجلات التشغيل لوكلاء البرمجة</string>
     <string name="st_harness_max_turns">الحد الأقصى لأدوار الجلسة</string>

@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="ws_subagents_running">Субагентов: %1$d</string>
+    <string name="ws_subagent_starting">Запуск…</string>
     <string name="ws_agy_setup_title">Настройка Antigravity</string>
     <string name="ws_agy_connect_google">Подключите аккаунт Google</string>
     <string name="ws_agy_connect_desc">PocketDev запускает официальный CLI agy от Google в своей частной среде Linux. Аутентификацию выполняет Google, а сохранённым сеансом управляет agy.</string>

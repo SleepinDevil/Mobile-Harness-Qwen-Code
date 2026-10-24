@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.Switch
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -153,6 +154,10 @@ fun SettingsScreen(
     onClearRuntimeCache: () -> Unit = {},
     onSetHarnessMaxTurns: (AgentKind, Int) -> Unit = { _, _ -> },
     onSetHarnessMaxWallMinutes: (Int) -> Unit = {},
+    onSetHarnessQwenContextWindowTokens: (Int) -> Unit = {},
+    onSetHarnessQwenAutoCompactPercent: (Int) -> Unit = {},
+    onSetHarnessQwenSubagents: (Boolean) -> Unit = {},
+    onSetHarnessQwenMaxSubagents: (Int) -> Unit = {},
     onResetHarnessLimits: () -> Unit = {},
     onRefreshHarnessLogs: () -> Unit = {},
     onOpenHarnessLog: (String) -> Unit = {},
@@ -533,6 +538,48 @@ fun SettingsScreen(
                         value = state.qwenMaxWallMinutes,
                         supporting = stringResource(R.string.st_harness_wall_support),
                         onCommit = onSetHarnessMaxWallMinutes,
+                    )
+                    HarnessLimitField(
+                        label = stringResource(R.string.st_harness_qwen_context),
+                        value = state.qwenContextWindowTokens,
+                        supporting = stringResource(R.string.st_harness_qwen_context_support),
+                        maxDigits = 7,
+                        onCommit = onSetHarnessQwenContextWindowTokens,
+                    )
+                    HarnessLimitField(
+                        label = stringResource(R.string.st_harness_qwen_compact),
+                        value = state.qwenAutoCompactPercent,
+                        supporting = stringResource(R.string.st_harness_qwen_compact_support),
+                        onCommit = onSetHarnessQwenAutoCompactPercent,
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.st_harness_qwen_subagents),
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                text = stringResource(R.string.st_harness_qwen_subagents_support),
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = state.qwenSubagentsEnabled,
+                            onCheckedChange = onSetHarnessQwenSubagents,
+                        )
+                    }
+                    HarnessLimitField(
+                        label = stringResource(R.string.st_harness_qwen_max_subagents),
+                        value = state.qwenMaxConcurrentSubagents,
+                        supporting = stringResource(R.string.st_harness_qwen_max_subagents_support),
+                        maxDigits = 2,
+                        onCommit = onSetHarnessQwenMaxSubagents,
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
@@ -1242,6 +1289,7 @@ private fun HarnessLimitField(
     label: String,
     value: Int,
     supporting: String,
+    maxDigits: Int = 3,
     onCommit: (Int) -> Unit,
 ) {
     var text by rememberSaveable(label) { mutableStateOf(value.toString()) }
@@ -1251,7 +1299,7 @@ private fun HarnessLimitField(
     OutlinedTextField(
         value = text,
         onValueChange = { raw ->
-            val digits = raw.filter(Char::isDigit).take(3)
+            val digits = raw.filter(Char::isDigit).take(maxDigits)
             text = digits
             digits.toIntOrNull()?.let(onCommit)
         },

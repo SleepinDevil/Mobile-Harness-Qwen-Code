@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="ws_subagents_running">%1$d सबएजेंट चल रहे</string>
+    <string name="ws_subagent_starting">प्रारंभ हो रहा है…</string>
     <string name="ws_agy_setup_title">Antigravity सेट अप करें</string>
     <string name="ws_agy_connect_google">अपना Google खाता कनेक्ट करें</string>
     <string name="ws_agy_connect_desc">PocketDev अपने निजी Linux वातावरण में Google का आधिकारिक agy CLI चलाता है। प्रमाणीकरण Google संभालता है और सहेजा गया सत्र agy के पास रहता है।</string>

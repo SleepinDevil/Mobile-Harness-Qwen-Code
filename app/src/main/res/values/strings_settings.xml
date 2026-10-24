@@ -112,6 +112,14 @@
     <string name="st_update_channel_overridden">Overridden · debug only</string>
     <string name="st_use_and_check">Use &amp; check</string>
     <string name="st_use_custom_model_id">Use custom model ID:</string>
+    <string name="st_harness_qwen_context">Context window (tokens)</string>
+    <string name="st_harness_qwen_context_support">Your server’s real context length. Qwen Code assumes 200K for unknown models and can overrun a smaller self-hosted window; 0 keeps that fallback.</string>
+    <string name="st_harness_qwen_compact">Auto-compact threshold (%)</string>
+    <string name="st_harness_qwen_compact_support">Summarize the session once it fills this share of the context window.</string>
+    <string name="st_harness_qwen_subagents">Subagents</string>
+    <string name="st_harness_qwen_subagents_support">Let Qwen Code delegate side tasks to parallel subagents. Uses more memory and model calls; when off the tools are removed entirely.</string>
+    <string name="st_harness_qwen_max_subagents">Max concurrent subagents</string>
+    <string name="st_harness_qwen_max_subagents_support">Cap on subagents running at the same time.</string>
     <string name="st_harness_title">Harness settings</string>
     <string name="st_harness_subtitle">Turn limits and run logs for the coding agents</string>
     <string name="st_harness_max_turns">Max session turns</string>

@@ -112,6 +112,14 @@
     <string name="st_update_channel_overridden">Переопределено · только отладка</string>
     <string name="st_use_and_check">Использовать и проверить</string>
     <string name="st_use_custom_model_id">Использовать свой ID модели:</string>
+    <string name="st_harness_qwen_context">Окно контекста (токенов)</string>
+    <string name="st_harness_qwen_context_support">Реальная длина контекста вашего сервера. Для неизвестных моделей Qwen Code предполагает 200 Т и может превысить меньшее окно самостоятельного сервера; 0 оставляет значение по умолчанию.</string>
+    <string name="st_harness_qwen_compact">Порог автосвертки (%)</string>
+    <string name="st_harness_qwen_compact_support">Свернуть сессию в подытог, когда она займет эту долю контекста.</string>
+    <string name="st_harness_qwen_subagents">Субагенты</string>
+    <string name="st_harness_qwen_subagents_support">Разрешить Qwen Code поручать параллельные задачи субагентам. Требует больше памяти и запросов; при выключении инструменты полностью удаляются.</string>
+    <string name="st_harness_qwen_max_subagents">Макс. параллельных субагентов</string>
+    <string name="st_harness_qwen_max_subagents_support">Предел одновременно работающих субагентов.</string>
     <string name="st_harness_title">Настройки агентов</string>
     <string name="st_harness_subtitle">Лимиты ходов и журналы запусков код-агентов</string>
     <string name="st_harness_max_turns">Макс. ходов сессии</string>

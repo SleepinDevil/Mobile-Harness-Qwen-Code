@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="ws_subagents_running">%1$d 个子代理运行中</string>
+    <string name="ws_subagent_starting">启动中…</string>
     <string name="ws_agy_setup_title">设置 Antigravity</string>
     <string name="ws_agy_connect_google">连接您的 Google 账号</string>
     <string name="ws_agy_connect_desc">PocketDev 在其私有 Linux 环境中运行 Google 官方的 agy CLI。身份验证由 Google 处理，已保存的会话由 agy 管理。</string>

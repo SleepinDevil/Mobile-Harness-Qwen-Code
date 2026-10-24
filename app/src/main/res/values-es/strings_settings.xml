@@ -112,6 +112,14 @@
     <string name="st_update_channel_overridden">Reemplazado · solo depuración</string>
     <string name="st_use_and_check">Usar y comprobar</string>
     <string name="st_use_custom_model_id">Usar ID de modelo personalizado:</string>
+    <string name="st_harness_qwen_context">Ventana de contexto (tokens)</string>
+    <string name="st_harness_qwen_context_support">Longitud de contexto real de tu servidor. Qwen Code asume 200K para modelos desconocidos y puede exceder una ventana autoalojada menor; 0 mantiene ese valor por defecto.</string>
+    <string name="st_harness_qwen_compact">Umbral de autocompresión (%)</string>
+    <string name="st_harness_qwen_compact_support">Resume la sesión cuando ocupe este porcentaje de la ventana de contexto.</string>
+    <string name="st_harness_qwen_subagents">Subagentes</string>
+    <string name="st_harness_qwen_subagents_support">Permite que Qwen Code delegue tareas secundarias en subagentes paralelos. Consume más memoria y llamadas; al desactivarlo las herramientas se eliminan por completo.</string>
+    <string name="st_harness_qwen_max_subagents">Máx. subagentes simultáneos</string>
+    <string name="st_harness_qwen_max_subagents_support">Límite de subagentes ejecutándose a la vez.</string>
     <string name="st_harness_title">Ajustes del agente</string>
     <string name="st_harness_subtitle">Límites de turnos y registros de ejecución de los agentes de código</string>
     <string name="st_harness_max_turns">Turnos máximos de sesión</string>

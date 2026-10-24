@@ -44,6 +44,10 @@ class QwenRuntimeBridge(
     private val secretFor: (ProviderProfile) -> String?,
     private val maxSessionTurns: () -> Int = { DEFAULT_MAX_SESSION_TURNS },
     private val maxWallMinutes: () -> Int = { DEFAULT_MAX_WALL_MINUTES },
+    private val contextWindowTokens: () -> Int = { DEFAULT_CONTEXT_WINDOW_TOKENS },
+    private val autoCompactPercent: () -> Int = { DEFAULT_AUTO_COMPACT_PERCENT },
+    private val subagentsEnabled: () -> Boolean = { DEFAULT_SUBAGENTS_ENABLED },
+    private val maxConcurrentSubagents: () -> Int = { DEFAULT_MAX_CONCURRENT_SUBAGENTS },
 ) : RuntimeBridge {
     private val installer = RuntimeInstaller(context)
     private val runtimeLogs = RuntimeLogStore(File(context.filesDir, "runtime-logs"))
@@ -52,6 +56,7 @@ class QwenRuntimeBridge(
     override val events: Flow<RuntimeEvent> = eventBus
     private val finishedSessions = ConcurrentHashMap.newKeySet<String>()
     private val toolNames = ConcurrentHashMap<String, String>()
+    private val subagentDescriptions = ConcurrentHashMap<String, String>()
     private val seenToolCalls = ConcurrentHashMap.newKeySet<String>()
     @Volatile private var activeProcess: Process? = null
     @Volatile private var activeSessionId: String? = null
@@ -78,6 +83,7 @@ class QwenRuntimeBridge(
         foregroundResultPosted = false
         toolNames.clear()
         seenToolCalls.clear()
+        subagentDescriptions.clear()
         lastReasoningTokens = 0
         lastReasoningUpdateAt = 0L
         lastThinkingUpdateAt = 0L
@@ -354,6 +360,15 @@ class QwenRuntimeBridge(
     }
 
     private suspend fun consumeQwenJsonEvent(sessionId: String, json: JSONObject) {
+        // Subagent turns share this stdout stream with the main agent's, tagged
+        // with parent_tool_use_id. They must never complete the session, feed the
+        // chat text, or count as the main agent's own assistant end_turn; only
+        // their tool calls are surfaced as attributed progress rows.
+        val parentCallId = qwenParentToolUseId(json)
+        if (parentCallId != null) {
+            consumeSubagentJsonEvent(sessionId, parentCallId, json)
+            return
+        }
         when (json.optString("type")) {
             "stream_event" -> json.optJSONObject("event")?.let { consumeQwenJsonEvent(sessionId, it) }
             "system" -> when (json.optString("subtype")) {
@@ -446,6 +461,9 @@ class QwenRuntimeBridge(
                         val result = block.optString("content")
                             .ifBlank { if (block.optBoolean("is_error")) "Tool failed" else "Completed successfully" }
                         eventBus.emit(RuntimeEvent.ToolCompleted(sessionId, toolName, sanitizeForDisplay(result)))
+                        if (toolName == "agent" && subagentDescriptions.remove(toolId) != null) {
+                            eventBus.emit(RuntimeEvent.SubagentFinished(sessionId, toolId))
+                        }
                     }
                 }
             }
@@ -459,6 +477,47 @@ class QwenRuntimeBridge(
                 // wrapper that may remain alive after the answer completed.
                 emitCompletedOnce(sessionId)
                 terminateActiveProcessGracefully()
+            }
+        }
+    }
+
+    /**
+     * Surfaces subagent tool activity as attributed progress rows. Text, thinking,
+     * and the subagent's own end_turn messages are intentionally dropped: they are
+     * internal to the subagent, and honouring its end_turn would complete (and
+     * kill) the whole session while the main agent is still working.
+     */
+    private suspend fun consumeSubagentJsonEvent(sessionId: String, parentCallId: String, json: JSONObject) {
+        when (json.optString("type")) {
+            "assistant" -> {
+                val content = json.optJSONObject("message")?.optJSONArray("content") ?: return
+                for (index in 0 until content.length()) {
+                    val block = content.optJSONObject(index) ?: continue
+                    if (block.optString("type") == "tool_use") {
+                        val (name, detail) = emitToolStarted(sessionId, block, subagent = true)
+                        eventBus.emit(
+                            RuntimeEvent.SubagentActivity(
+                                sessionId,
+                                parentCallId,
+                                subagentDescriptions[parentCallId] ?: "Subagent",
+                                listOf(name, detail).filter(String::isNotBlank).joinToString(" · "),
+                            ),
+                        )
+                    }
+                }
+            }
+            "user" -> {
+                val content = json.optJSONObject("message")?.optJSONArray("content") ?: return
+                for (index in 0 until content.length()) {
+                    val block = content.optJSONObject(index) ?: continue
+                    if (block.optString("type") == "tool_result") {
+                        val toolId = block.optString("tool_use_id")
+                        val toolName = toolNames.remove(toolId) ?: "Subagent tool"
+                        val result = block.optString("content")
+                            .ifBlank { if (block.optBoolean("is_error")) "Tool failed" else "Completed successfully" }
+                        eventBus.emit(RuntimeEvent.ToolCompleted(sessionId, toolName, sanitizeForDisplay(result)))
+                    }
+                }
             }
         }
     }
@@ -499,11 +558,15 @@ class QwenRuntimeBridge(
         }
     }
 
-    private suspend fun emitToolStarted(sessionId: String, block: JSONObject) {
+    /** Emits the progress row for one tool_use block and returns (name, detail) for subagent attribution. */
+    private suspend fun emitToolStarted(sessionId: String, block: JSONObject, subagent: Boolean = false): Pair<String, String> {
         val id = block.optString("id")
-        if (id.isNotBlank() && !seenToolCalls.add(id)) return
+        if (id.isNotBlank() && !seenToolCalls.add(id)) return block.optString("name", "Tool") to ""
         val name = block.optString("name", "Tool")
-        if (id.isNotBlank()) toolNames[id] = name
+        // The ViewModel matches ToolCompleted rows by tool name, so store and emit
+        // the same attributed ("… (subagent)") label for child calls.
+        val displayName = if (subagent) "$name (subagent)" else name
+        if (id.isNotBlank()) toolNames[id] = displayName
         val input = block.optJSONObject("input") ?: JSONObject()
         val detail = when (name) {
             "run_shell_command" -> input.optString("command").ifBlank { input.optString("description") }
@@ -517,10 +580,20 @@ class QwenRuntimeBridge(
             }
             "web_fetch", "websearch" -> input.optString("url").ifBlank { input.optString("query") }
             "list_directory" -> input.optString("dir_path")
+            "agent" -> input.optString("description").ifBlank { "Launching subagent" }.let { description ->
+                input.optString("subagent_type").takeIf(String::isNotBlank)?.let { "$description · $it" } ?: description
+            }
             else -> input.optString("description").ifBlank { "Running $name" }
         }
-        eventBus.emit(RuntimeEvent.ToolStarted(sessionId, name, sanitizeForDisplay(detail.ifBlank { "Running $name" })))
-        pushForegroundProgress(R.string.rt_bridge_running_tool, name, detail.replace(Regex("\\s+"), " ").trim().take(80).ifBlank { name })
+        if (!subagent && name == "agent" && id.isNotBlank()) {
+            // The agent-tool call spawns one live subagent; its child turns stream
+            // back tagged with this call id, so remember the ask for attribution.
+            subagentDescriptions[id] = detail
+            eventBus.emit(RuntimeEvent.SubagentStarted(sessionId, id, detail))
+        }
+        eventBus.emit(RuntimeEvent.ToolStarted(sessionId, displayName, sanitizeForDisplay(detail.ifBlank { "Running $displayName" })))
+        pushForegroundProgress(R.string.rt_bridge_running_tool, displayName, detail.replace(Regex("\\s+"), " ").trim().take(80).ifBlank { displayName })
+        return name to detail
     }
 
     private fun exitCodeHint(exit: Int): String? = when (exit) {
@@ -570,29 +643,13 @@ class QwenRuntimeBridge(
     /** Per-session Qwen Code settings: provider route, yolo approvals, hard limits. */
     private fun writeQwenSettings(rootfs: File, route: QwenRoute) {
         val home = File(rootfs, QWEN_HOME_GUEST_PATH.removePrefix("/")).apply { mkdirs() }
-        val providerEntry = JSONObject()
-            .put("id", route.model)
-            .put("envKey", route.envKey)
-            .put("baseUrl", route.baseUrl)
-        route.wireApi?.let { providerEntry.put("wireApi", it) }
-        val settings = JSONObject()
-            .put(
-                "security",
-                JSONObject()
-                    .put("auth", JSONObject().put("selectedType", route.authType))
-                    .put("folderTrust", JSONObject().put("enabled", false)),
-            )
-            .put(
-                "model",
-                JSONObject()
-                    .put("name", route.model)
-                    .put("maxSessionTurns", maxSessionTurns()),
-            )
-            .put("tools", JSONObject().put("approvalMode", "yolo"))
-            .put("telemetry", JSONObject().put("enabled", false))
-            .put("privacy", JSONObject().put("usageStatisticsEnabled", false))
-            .put("experimental", JSONObject().put("cron", false).put("artifact", false))
-            .put("modelProviders", JSONObject().put(route.authType, JSONArray().put(providerEntry)))
+        val settings = qwenSettingsJson(
+            route = route,
+            maxSessionTurns = maxSessionTurns(),
+            contextWindowTokens = contextWindowTokens(),
+            autoCompactPercent = autoCompactPercent(),
+            subagentsEnabled = subagentsEnabled(),
+        )
         File(home, "settings.json").writeText(settings.toString(2))
     }
 
@@ -604,6 +661,8 @@ class QwenRuntimeBridge(
             # PocketDev runtime
             - You run inside PRoot (userspace isolation, no root, no Docker, no KVM, no systemd).
             - The project root is /workspace/<project>; keep every file and command inside it.
+            - The file-editing tool is named `edit`. There is no `edit_file` tool; call `edit`
+              directly instead of guessing tool names.
             - Android builds: JDK 17, Android SDK 36, ARM64 Build Tools 35.0.0, Gradle 8.14.3 and an
               offline Maven repository are preinstalled. Use the installed `gradle` command.
             - Newly created Android projects: AGP 8.11.0, Kotlin 1.9.22, compileSdk 36, Java 17,
@@ -616,16 +675,11 @@ class QwenRuntimeBridge(
         )
     }
 
-    private fun buildQwenEnvironment(route: QwenRoute, secret: String): Map<String, String> = mapOf(
-        route.envKey to secret,
-        "QWEN_TELEMETRY_ENABLED" to "0",
-        "QWEN_USAGE_STATISTICS_ENABLED" to "0",
-        "QWEN_CODE_UNATTENDED_RETRY" to "1",
-        "QWEN_CODE_SUPPRESS_YOLO_WARNING" to "1",
-        "QWEN_CODE_DISABLE_CRON" to "1",
-        "QWEN_CODE_DISABLE_ARTIFACT" to "1",
-        "NO_COLOR" to "1",
-        "NODE_OPTIONS" to "--max-old-space-size=1024",
+    private fun buildQwenEnvironment(route: QwenRoute, secret: String): Map<String, String> = qwenLaunchEnvironment(
+        envKey = route.envKey,
+        secret = secret,
+        subagentsEnabled = subagentsEnabled(),
+        maxConcurrentSubagents = maxConcurrentSubagents(),
     )
 
     private fun buildContextPrompt(currentPrompt: String, history: List<ChatMessage>, guestWorkspacePath: String, projectKind: ProjectKind): String {
@@ -638,7 +692,7 @@ class QwenRuntimeBridge(
                 !msg.text.contains("API Error")
             }
             .dropLast(1) // Drop the current prompt which was just added
-            .recentWithinCharacterBudget(MAX_CONVERSATION_HISTORY_CHARACTERS)
+            .recentWithinCharacterBudget(qwenHistoryCharacterBudget(contextWindowTokens()))
 
         val sb = StringBuilder()
         sb.appendLine("<project_workspace>")
@@ -795,7 +849,11 @@ class QwenRuntimeBridge(
         const val DEFAULT_MAX_SESSION_TURNS = 25
         const val DEFAULT_MAX_WALL_MINUTES = 30
         private const val FOREGROUND_PROGRESS_MIN_INTERVAL_MS = 750L
-        private const val MAX_CONVERSATION_HISTORY_CHARACTERS = 160_000
+        /** 0 lets Qwen Code guess the context window (200K fallback for unknown models). */
+        const val DEFAULT_CONTEXT_WINDOW_TOKENS = 0
+        const val DEFAULT_AUTO_COMPACT_PERCENT = 85
+        const val DEFAULT_SUBAGENTS_ENABLED = false
+        const val DEFAULT_MAX_CONCURRENT_SUBAGENTS = 10
     }
 }
 
@@ -879,3 +937,113 @@ internal object QwenRouteMapper {
         return if (base.endsWith("/v1")) base else "$base/v1"
     }
 }
+
+/**
+ * Assembles the per-session `/root/.qwen/settings.json` payload. The context
+ * window override lives inside the `modelProviders` entry because provider
+ * model entries are sealed: a top-level `model.generationConfig` never fills
+ * missing fields for a provider-defined model.
+ */
+internal fun qwenSettingsJson(
+    route: QwenRoute,
+    maxSessionTurns: Int,
+    contextWindowTokens: Int,
+    autoCompactPercent: Int,
+    subagentsEnabled: Boolean,
+): JSONObject {
+    val providerEntry = JSONObject()
+        .put("id", route.model)
+        .put("envKey", route.envKey)
+        .put("baseUrl", route.baseUrl)
+    route.wireApi?.let { providerEntry.put("wireApi", it) }
+    if (contextWindowTokens > 0) {
+        providerEntry.put(
+            "generationConfig",
+            JSONObject().put("contextWindowSize", contextWindowTokens),
+        )
+    }
+    val modelSettings = JSONObject()
+        .put("name", route.model)
+        .put("maxSessionTurns", maxSessionTurns)
+    val toolsSettings = JSONObject().put("approvalMode", "yolo")
+    if (subagentsEnabled) {
+        // Subagents stay flat: nested delegation multiplies model calls and was
+        // the main source of runaway subagent sessions on phone-class runtimes.
+        modelSettings.put("maxSubagentDepth", 1)
+    } else {
+        // tools.disabled unregisters the tools, so they are invisible to the
+        // model and unreachable even through the tool_search/tool_call bridge.
+        toolsSettings.put("disabled", JSONArray(QWEN_SUBAGENT_CONTROL_TOOLS))
+    }
+    return JSONObject()
+        .put(
+            "security",
+            JSONObject()
+                .put("auth", JSONObject().put("selectedType", route.authType))
+                .put("folderTrust", JSONObject().put("enabled", false)),
+        )
+        .put("model", modelSettings)
+        .put(
+            "context",
+            JSONObject().put("autoCompactThreshold", autoCompactPercent.coerceIn(5, 100) / 100.0),
+        )
+        .put("tools", toolsSettings)
+        .put("telemetry", JSONObject().put("enabled", false))
+        .put("privacy", JSONObject().put("usageStatisticsEnabled", false))
+        .put("experimental", JSONObject().put("cron", false).put("artifact", false))
+        .put("modelProviders", JSONObject().put(route.authType, JSONArray().put(providerEntry)))
+}
+
+/** Subagent control-plane tools removed when subagents are turned off. */
+internal val QWEN_SUBAGENT_CONTROL_TOOLS = listOf("agent", "list_agents", "send_message", "task_stop")
+
+/** Launch environment; caps concurrent background subagents when they are allowed. */
+internal fun qwenLaunchEnvironment(
+    envKey: String,
+    secret: String,
+    subagentsEnabled: Boolean,
+    maxConcurrentSubagents: Int,
+): Map<String, String> = buildMap {
+    put(envKey, secret)
+    put("QWEN_TELEMETRY_ENABLED", "0")
+    put("QWEN_USAGE_STATISTICS_ENABLED", "0")
+    put("QWEN_CODE_UNATTENDED_RETRY", "1")
+    put("QWEN_CODE_SUPPRESS_YOLO_WARNING", "1")
+    put("QWEN_CODE_DISABLE_CRON", "1")
+    put("QWEN_CODE_DISABLE_ARTIFACT", "1")
+    put("NO_COLOR", "1")
+    put("NODE_OPTIONS", "--max-old-space-size=1024")
+    if (subagentsEnabled) {
+        put("QWEN_CODE_MAX_BACKGROUND_AGENTS", maxConcurrentSubagents.coerceAtLeast(1).toString())
+    }
+}
+
+/**
+ * Character budget for the replayed chat history. Sessions are one-shot, so the
+ * prior turns travel inside the prompt and this budget is what keeps a small
+ * server-side context from receiving a prompt it would truncate: two characters
+ * per context token leaves the rest of the window for the prompt, tools, and
+ * replies. An unset window keeps the historical flat cap.
+ */
+internal fun qwenHistoryCharacterBudget(contextWindowTokens: Int): Int =
+    if (contextWindowTokens <= 0) {
+        MAX_CONVERSATION_HISTORY_CHARACTERS
+    } else {
+        (contextWindowTokens * HISTORY_CHARACTERS_PER_CONTEXT_TOKEN)
+            .coerceIn(MIN_CONVERSATION_HISTORY_CHARACTERS, MAX_CONVERSATION_HISTORY_CHARACTERS)
+    }
+
+private const val MIN_CONVERSATION_HISTORY_CHARACTERS = 4_000
+private const val MAX_CONVERSATION_HISTORY_CHARACTERS = 160_000
+private const val HISTORY_CHARACTERS_PER_CONTEXT_TOKEN = 2
+
+/**
+ * Qwen Code multiplexes subagent turns onto the same stdout stream, tagging each
+ * envelope with `parent_tool_use_id`; absent or JSON null means the main agent.
+ */
+internal fun qwenParentToolUseId(json: JSONObject): String? =
+    if (json.has("parent_tool_use_id") && !json.isNull("parent_tool_use_id")) {
+        json.optString("parent_tool_use_id").takeIf(String::isNotBlank)
+    } else {
+        null
+    }

@@ -31,6 +31,7 @@ import com.jarves.mh.model.ActivityItem
 import com.jarves.mh.model.AgentKind
 import com.jarves.mh.model.ChangeItem
 import com.jarves.mh.model.ChatMessage
+import com.jarves.mh.model.SubagentStatus
 import com.jarves.mh.model.ChatAttachment
 import com.jarves.mh.model.DevStack
 import com.jarves.mh.model.Project
@@ -336,6 +337,7 @@ data class AppUiState(
     val activity: List<ActivityItem> = emptyList(),
     val liveProcess: List<ActivityItem> = emptyList(),
     val liveThinking: Boolean = false,
+    val subagents: List<SubagentStatus> = emptyList(),
     val activeThinkingBlockId: Long? = null,
     val taskStartedAtMillis: Long? = null,
     val taskFinishedAtMillis: Long? = null,
@@ -388,6 +390,10 @@ data class AppUiState(
     val antigravityModelsLoading: Boolean = false,
     val qwenMaxSessionTurns: Int = QwenRuntimeBridge.DEFAULT_MAX_SESSION_TURNS,
     val qwenMaxWallMinutes: Int = QwenRuntimeBridge.DEFAULT_MAX_WALL_MINUTES,
+    val qwenContextWindowTokens: Int = QwenRuntimeBridge.DEFAULT_CONTEXT_WINDOW_TOKENS,
+    val qwenAutoCompactPercent: Int = QwenRuntimeBridge.DEFAULT_AUTO_COMPACT_PERCENT,
+    val qwenSubagentsEnabled: Boolean = QwenRuntimeBridge.DEFAULT_SUBAGENTS_ENABLED,
+    val qwenMaxConcurrentSubagents: Int = QwenRuntimeBridge.DEFAULT_MAX_CONCURRENT_SUBAGENTS,
     val claudeMaxTurns: Int = ClaudeRuntimeBridge.DEFAULT_MAX_TURNS,
     val harnessLogs: List<RuntimeLogEntry> = emptyList(),
     val harnessLogContent: HarnessLogContent? = null,
@@ -436,6 +442,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         secretFor = { profile -> vault.get(profile.kind.name) },
         maxSessionTurns = { _state.value.qwenMaxSessionTurns },
         maxWallMinutes = { _state.value.qwenMaxWallMinutes },
+        contextWindowTokens = { _state.value.qwenContextWindowTokens },
+        autoCompactPercent = { _state.value.qwenAutoCompactPercent },
+        subagentsEnabled = { _state.value.qwenSubagentsEnabled },
+        maxConcurrentSubagents = { _state.value.qwenMaxConcurrentSubagents },
     )
     private val installer = RuntimeInstaller(application)
     private val antigravityRuntime = AntigravityRuntimeBridge(
@@ -518,6 +528,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             antigravityEffort = preferences.antigravityEffort,
             qwenMaxSessionTurns = preferences.agentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_TURNS, QwenRuntimeBridge.DEFAULT_MAX_SESSION_TURNS),
             qwenMaxWallMinutes = preferences.agentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_WALL_MINUTES, QwenRuntimeBridge.DEFAULT_MAX_WALL_MINUTES),
+            qwenContextWindowTokens = preferences.agentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_CONTEXT_TOKENS, QwenRuntimeBridge.DEFAULT_CONTEXT_WINDOW_TOKENS),
+            qwenAutoCompactPercent = preferences.agentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_AUTO_COMPACT, QwenRuntimeBridge.DEFAULT_AUTO_COMPACT_PERCENT),
+            qwenSubagentsEnabled = preferences.agentFlag(AgentKind.QWEN_CODE, HARNESS_FLAG_SUBAGENTS, QwenRuntimeBridge.DEFAULT_SUBAGENTS_ENABLED),
+            qwenMaxConcurrentSubagents = preferences.agentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_MAX_SUBAGENTS, QwenRuntimeBridge.DEFAULT_MAX_CONCURRENT_SUBAGENTS),
             claudeMaxTurns = preferences.agentLimit(AgentKind.CLAUDE_CODE, HARNESS_LIMIT_TURNS, ClaudeRuntimeBridge.DEFAULT_MAX_TURNS),
             themeMode = runCatching { com.jarves.mh.ui.theme.AppThemeMode.valueOf(preferences.themeMode.uppercase()) }
                 .getOrDefault(com.jarves.mh.ui.theme.AppThemeMode.DARK),
@@ -970,14 +984,45 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _state.update { it.copy(qwenMaxWallMinutes = clamped) }
     }
 
+    fun setHarnessQwenContextWindowTokens(tokens: Int) {
+        val clamped = tokens.coerceIn(0, 1_000_000)
+        preferences.setAgentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_CONTEXT_TOKENS, clamped)
+        _state.update { it.copy(qwenContextWindowTokens = clamped) }
+    }
+
+    fun setHarnessQwenAutoCompactPercent(percent: Int) {
+        val clamped = percent.coerceIn(5, 100)
+        preferences.setAgentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_AUTO_COMPACT, clamped)
+        _state.update { it.copy(qwenAutoCompactPercent = clamped) }
+    }
+
+    fun setHarnessQwenSubagents(enabled: Boolean) {
+        preferences.setAgentFlag(AgentKind.QWEN_CODE, HARNESS_FLAG_SUBAGENTS, enabled)
+        _state.update { it.copy(qwenSubagentsEnabled = enabled) }
+    }
+
+    fun setHarnessQwenMaxSubagents(count: Int) {
+        val clamped = count.coerceIn(1, 50)
+        preferences.setAgentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_MAX_SUBAGENTS, clamped)
+        _state.update { it.copy(qwenMaxConcurrentSubagents = clamped) }
+    }
+
     fun resetHarnessLimits() {
         preferences.setAgentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_TURNS, QwenRuntimeBridge.DEFAULT_MAX_SESSION_TURNS)
         preferences.setAgentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_WALL_MINUTES, QwenRuntimeBridge.DEFAULT_MAX_WALL_MINUTES)
+        preferences.setAgentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_CONTEXT_TOKENS, QwenRuntimeBridge.DEFAULT_CONTEXT_WINDOW_TOKENS)
+        preferences.setAgentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_AUTO_COMPACT, QwenRuntimeBridge.DEFAULT_AUTO_COMPACT_PERCENT)
+        preferences.setAgentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_MAX_SUBAGENTS, QwenRuntimeBridge.DEFAULT_MAX_CONCURRENT_SUBAGENTS)
+        preferences.setAgentFlag(AgentKind.QWEN_CODE, HARNESS_FLAG_SUBAGENTS, QwenRuntimeBridge.DEFAULT_SUBAGENTS_ENABLED)
         preferences.setAgentLimit(AgentKind.CLAUDE_CODE, HARNESS_LIMIT_TURNS, ClaudeRuntimeBridge.DEFAULT_MAX_TURNS)
         _state.update {
             it.copy(
                 qwenMaxSessionTurns = QwenRuntimeBridge.DEFAULT_MAX_SESSION_TURNS,
                 qwenMaxWallMinutes = QwenRuntimeBridge.DEFAULT_MAX_WALL_MINUTES,
+                qwenContextWindowTokens = QwenRuntimeBridge.DEFAULT_CONTEXT_WINDOW_TOKENS,
+                qwenAutoCompactPercent = QwenRuntimeBridge.DEFAULT_AUTO_COMPACT_PERCENT,
+                qwenMaxConcurrentSubagents = QwenRuntimeBridge.DEFAULT_MAX_CONCURRENT_SUBAGENTS,
+                qwenSubagentsEnabled = QwenRuntimeBridge.DEFAULT_SUBAGENTS_ENABLED,
                 claudeMaxTurns = ClaudeRuntimeBridge.DEFAULT_MAX_TURNS,
             )
         }
@@ -5077,6 +5122,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } else when (event) {
                 is RuntimeEvent.SessionStarted -> current.copy(
                     activeSessionId = event.sessionId,
+                    subagents = emptyList(),
                     activity = current.activity.mapIndexed { index, item -> if (index == 0) item.copy(isComplete = true) else item },
                 )
                 is RuntimeEvent.AssistantDelta -> {
@@ -5242,11 +5288,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     liveThinking = false,
                     workSegmentStartedAtMillis = current.workSegmentStartedAtMillis ?: System.currentTimeMillis(),
                 )
+                is RuntimeEvent.SubagentStarted -> current.copy(
+                    subagents = current.subagents.filterNot { it.callId == event.callId } +
+                        SubagentStatus(callId = event.callId, description = event.description),
+                )
+                is RuntimeEvent.SubagentActivity -> {
+                    val known = current.subagents.any { it.callId == event.callId }
+                    current.copy(
+                        subagents = if (known) {
+                            current.subagents.map { sub ->
+                                if (sub.callId == event.callId) {
+                                    sub.copy(description = event.description, activity = event.detail)
+                                } else {
+                                    sub
+                                }
+                            }
+                        } else {
+                            current.subagents +
+                                SubagentStatus(event.callId, event.description, event.detail)
+                        },
+                    )
+                }
+                is RuntimeEvent.SubagentFinished -> current.copy(
+                    subagents = current.subagents.filterNot { it.callId == event.callId },
+                )
                 is RuntimeEvent.SessionCompleted -> {
                     val finishedAt = System.currentTimeMillis()
                     attachTaskDuration(finishWorkSegment(current, finishedAt), finishedAt).copy(
                         isRunning = false,
                         activeSessionId = null,
+                        subagents = emptyList(),
                         activity = listOf(ActivityItem(str(R.string.vm_task_completed), str(R.string.vm_agent_finished, current.agentKind.localizedTitle(getApplication())))) +
                             current.activity.map { if (!it.isComplete) it.copy(isComplete = true) else it },
                         taskFinishedAtMillis = finishedAt,
@@ -5265,6 +5336,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     ).copy(
                         isRunning = false,
                         activeSessionId = null,
+                        subagents = emptyList(),
                         pendingApproval = null,
                         toastMessage = displayReason.takeIf {
                             event.reason.contains("user not found", true) ||
@@ -5469,6 +5541,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private val DEFERRED_FOLDER_METADATA_NAMES = setOf(".git", ".gradle", "build", "node_modules")
         private const val HARNESS_LIMIT_TURNS = "max_turns"
         private const val HARNESS_LIMIT_WALL_MINUTES = "max_wall_minutes"
+        private const val HARNESS_LIMIT_CONTEXT_TOKENS = "context_window_tokens"
+        private const val HARNESS_LIMIT_AUTO_COMPACT = "auto_compact_percent"
+        private const val HARNESS_LIMIT_MAX_SUBAGENTS = "max_subagents"
+        private const val HARNESS_FLAG_SUBAGENTS = "subagents_enabled"
         private const val MAX_ACTIVITY_DETAIL_CHARS = 8_000
         private const val NOISY_ITEM_SCAN_CHARS = 320
         private const val TRANSCRIPT_WRITE_DEBOUNCE_MS = 500L

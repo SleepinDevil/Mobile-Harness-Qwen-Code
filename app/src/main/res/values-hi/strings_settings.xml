@@ -112,6 +112,14 @@
     <string name="st_update_channel_overridden">ओवरराइड किया गया · केवल डिबग</string>
     <string name="st_use_and_check">उपयोग करें और जाँचें</string>
     <string name="st_use_custom_model_id">कस्टम मॉडल ID उपयोग करें:</string>
+    <string name="st_harness_qwen_context">संदर्भ विंडो (टोकन)</string>
+    <string name="st_harness_qwen_context_support">आपके सर्वर की वास्तविक संदर्भ लंबाई। अज्ञात मॉडलों के लिए Qwen Code 200K अनुमान लगाता है और छोटे सेल्फ-होस्टेड विंडो से अधिक ले जा सकता है; 0 वही फ़ॉलबैक रखता है।</string>
+    <string name="st_harness_qwen_compact">ऑटो-संपीड़न सीमा (%)</string>
+    <string name="st_harness_qwen_compact_support">जब सत्र संदर्भ विंडो का इतना हिस्सा भर दे तो उसे सारांशित करें।</string>
+    <string name="st_harness_qwen_subagents">सबएजेंट</string>
+    <string name="st_harness_qwen_subagents_support">Qwen Code को सहायक कार्य समांतर सबएजेंटों को सौंपने दें। अधिक मेमोरी और मॉडल कॉल लगाते हैं; बंद होने पर टूल पूरी तरह हट जाते हैं।</string>
+    <string name="st_harness_qwen_max_subagents">अधिकतम समांतर सबएजेंट</string>
+    <string name="st_harness_qwen_max_subagents_support">एक साथ चलने वाले सबएजेंटों की अधिकतम संख्या।</string>
     <string name="st_harness_title">हार्नेस सेटिंग्स</string>
     <string name="st_harness_subtitle">कोडिंग एजेंट्स के लिए टर्न सीमाएँ और रन लॉग</string>
     <string name="st_harness_max_turns">अधिकतम सत्र टर्न</string>

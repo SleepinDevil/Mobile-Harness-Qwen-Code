@@ -343,9 +343,28 @@ sealed interface RuntimeEvent {
         val paths: List<String> get() = changes.map { it.path }
     }
     data class PreviewStarted(override val sessionId: String, val url: String) : RuntimeEvent
+    data class SubagentStarted(
+        override val sessionId: String,
+        val callId: String,
+        val description: String,
+    ) : RuntimeEvent
+    data class SubagentActivity(
+        override val sessionId: String,
+        val callId: String,
+        val description: String,
+        val detail: String,
+    ) : RuntimeEvent
+    data class SubagentFinished(override val sessionId: String, val callId: String) : RuntimeEvent
     data class SessionCompleted(override val sessionId: String) : RuntimeEvent
     data class SessionFailed(override val sessionId: String, val reason: String) : RuntimeEvent
 }
+
+/** One delegated subagent shown live in the chat overlay: what it was asked for and its current step. */
+data class SubagentStatus(
+    val callId: String,
+    val description: String,
+    val activity: String = "",
+)
 
 data class ChatMessage(
     val id: String = UUID.randomUUID().toString(),
