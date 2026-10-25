@@ -159,6 +159,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Slider
+import androidx.compose.material3.rememberModalBottomSheetState
+import kotlin.math.roundToInt
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.FilterChip
@@ -441,6 +446,7 @@ fun PocketDevApp(viewModel: MainViewModel = viewModel()) {
             onRenameChat = viewModel::renameChat,
             onDeleteChat = viewModel::deleteChat,
             onExportChatJson = viewModel::exportChatJson,
+            onSelectChatReasoning = viewModel::setChatReasoningOverride,
             onTerminalRun = viewModel::requestProjectTerminalCommand,
             onTerminalInput = viewModel::sendProjectTerminalInput,
             onTerminalInterrupt = viewModel::interruptProjectTerminalCommand,
@@ -4405,6 +4411,7 @@ private fun WorkspaceScreen(
     onRenameChat: (String, String) -> Unit,
     onDeleteChat: (String) -> Unit,
     onExportChatJson: (String) -> Unit,
+    onSelectChatReasoning: (Int) -> Unit,
     onTerminalRun: (String) -> Unit,
     onTerminalInput: (String) -> Unit,
     onTerminalInterrupt: () -> Unit,
@@ -4823,7 +4830,33 @@ private fun WorkspaceScreen(
                 )
                 WorkspaceTab.PREVIEW -> PreviewTab(state.previewReady, state.previewUrl)
             }
-            if (selectedTab == WorkspaceTab.CHAT && state.agentKind == AgentKind.QWEN_CODE) {
+            val reasoningChatAgent = selectedTab == WorkspaceTab.CHAT &&
+                (state.agentKind == AgentKind.QWEN_CODE || state.agentKind == AgentKind.DEEPSEEK_HARNESS)
+            if (reasoningChatAgent) {
+                val reasoningOptions = when (state.agentKind) {
+                    AgentKind.QWEN_CODE -> listOf(
+                        stringResource(R.string.st_effort_default),
+                        stringResource(R.string.st_effort_low),
+                        stringResource(R.string.st_effort_medium),
+                        stringResource(R.string.st_effort_high),
+                        stringResource(R.string.st_effort_xhigh),
+                        stringResource(R.string.st_effort_max),
+                    )
+                    else -> listOf(
+                        stringResource(R.string.st_efforts_none),
+                        stringResource(R.string.st_efforts_simple),
+                        stringResource(R.string.st_efforts_standard),
+                        stringResource(R.string.st_efforts_extended),
+                    )
+                }
+                val chatReasoningOverride = activeChat?.reasoningOverride ?: -1
+                val reasoningSelected = if (chatReasoningOverride >= 0) {
+                    chatReasoningOverride
+                } else if (state.agentKind == AgentKind.QWEN_CODE) {
+                    state.qwenReasoningEffort
+                } else {
+                    state.dshReasoningEffortsPreset
+                }
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -4831,23 +4864,109 @@ private fun WorkspaceScreen(
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    ContextGauge(
-                        data = ContextGaugeData(
-                            used = state.contextUsedTokens,
-                            estimated = state.contextEstimatedTokens,
-                            max = state.qwenContextWindowTokens,
-                            prompt = state.contextPromptTokens,
-                            cached = state.contextCachedTokens,
-                            output = state.contextOutputTokens,
-                            sessionTotal = activeChat?.totalTokens ?: 0L,
-                            subagentTotal = state.subagents.sumOf { it.contextTokens.toLong() },
-                        ),
-                    )
-                    if (state.qwenSubagentsEnabled && state.qwenMaxConcurrentSubagents >= 1) {
-                        SubagentMonitor(
-                            subagents = state.subagents,
-                            maxContextTokens = state.qwenContextWindowTokens,
+                    if (state.agentKind == AgentKind.QWEN_CODE) {
+                        ContextGauge(
+                            data = ContextGaugeData(
+                                used = state.contextUsedTokens,
+                                estimated = state.contextEstimatedTokens,
+                                max = state.qwenContextWindowTokens,
+                                prompt = state.contextPromptTokens,
+                                cached = state.contextCachedTokens,
+                                output = state.contextOutputTokens,
+                                sessionTotal = activeChat?.totalTokens ?: 0L,
+                                subagentTotal = state.subagents.sumOf { it.contextTokens.toLong() },
+                            ),
                         )
+                        if (state.qwenSubagentsEnabled && state.qwenMaxConcurrentSubagents >= 1) {
+                            SubagentMonitor(
+                                subagents = state.subagents,
+                                maxContextTokens = state.qwenContextWindowTokens,
+                            )
+                        }
+                    }
+                    ChatReasoningButton(
+                        options = reasoningOptions,
+                        selectedIndex = reasoningSelected,
+                        overridden = chatReasoningOverride >= 0,
+                        onSelect = onSelectChatReasoning,
+                    )
+                }
+            }
+        }
+    }
+}
+/**
+ * Floating brain button for reasoning-capable harnesses: opens a bottom sheet
+ * whose slider picks the reasoning level for this conversation only. The pick
+ * persists on the chat and applies from the next message onward (subagents
+ * included, since they share the session's settings); Settings stays untouched.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ChatReasoningButton(
+    options: List<String>,
+    selectedIndex: Int,
+    overridden: Boolean,
+    onSelect: (Int) -> Unit,
+) {
+    var sheetOpen by rememberSaveable { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState()
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        tonalElevation = 3.dp,
+        shadowElevation = 6.dp,
+        color = MaterialTheme.colorScheme.surface,
+    ) {
+        IconButton(onClick = { sheetOpen = true }) {
+            Icon(
+                Icons.Filled.Psychology,
+                contentDescription = stringResource(R.string.ws_chat_reasoning),
+                tint = if (overridden) PocketOrange else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+    if (sheetOpen) {
+        ModalBottomSheet(onDismissRequest = { sheetOpen = false }, sheetState = sheetState) {
+            Column(
+                Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(stringResource(R.string.ws_chat_reasoning), fontWeight = FontWeight.Medium, fontSize = 15.sp)
+                Text(
+                    options.getOrElse(selectedIndex) { options.firstOrNull().orEmpty() },
+                    color = PocketOrange,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 13.sp,
+                )
+                if (options.size >= 2) {
+                    Slider(
+                        value = selectedIndex.coerceIn(0, options.size - 1).toFloat(),
+                        onValueChange = { raw ->
+                            val index = raw.roundToInt().coerceIn(0, options.size - 1)
+                            if (index != selectedIndex) onSelect(index)
+                        },
+                        valueRange = 0f..(options.size - 1).toFloat(),
+                        steps = options.size - 2,
+                    )
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(options.first(), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(options.last(), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                Text(
+                    stringResource(
+                        if (overridden) R.string.ws_chat_reasoning_on_chat else R.string.ws_chat_reasoning_following,
+                    ),
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(stringResource(R.string.ws_chat_reasoning_hint), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (overridden) {
+                    TextButton(onClick = { onSelect(-1) }) {
+                        Text(stringResource(R.string.ws_chat_reasoning_follow_settings))
                     }
                 }
             }

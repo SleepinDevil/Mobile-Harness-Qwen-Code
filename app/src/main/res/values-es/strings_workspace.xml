@@ -181,4 +181,9 @@
     <string name="ws_preview_external_blocked">La navegación externa está bloqueada en la vista previa del proyecto</string>
     <string name="ws_open_url">Abrir URL</string>
     <string name="ws_refresh_preview">Actualizar vista previa</string>
+    <string name="ws_chat_reasoning">Nivel de razonamiento</string>
+    <string name="ws_chat_reasoning_hint">Se aplica desde el siguiente mensaje de este chat, incluidos sus subagentes. Los chats nuevos siguen Ajustes.</string>
+    <string name="ws_chat_reasoning_on_chat">Personalizado para este chat</string>
+    <string name="ws_chat_reasoning_following">Siguiendo Ajustes</string>
+    <string name="ws_chat_reasoning_follow_settings">Volver a seguir Ajustes</string>
 </resources>

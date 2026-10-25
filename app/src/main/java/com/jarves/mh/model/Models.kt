@@ -440,6 +440,8 @@ data class ProjectChat(
     val updatedAtMillis: Long = System.currentTimeMillis(),
     /** Lifetime sum of provider-reported tokens for every API call in this chat. */
     val totalTokens: Long = 0L,
+    /** Chat-scoped reasoning-level picker index; -1 keeps following the global Settings value. */
+    val reasoningOverride: Int = -1,
 )
 
 enum class DiffLineType { CONTEXT, ADDITION, DELETION, INFO }

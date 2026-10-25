@@ -35,4 +35,25 @@ class AppPreferencesTest {
     fun legacyChatsWithoutPersistedTotalDefaultToZero() {
         assertEquals(0L, ProjectChat(id = "legacy", title = "t").totalTokens)
     }
+    @Test
+    fun chatIndexJsonRoundTripsChatScopedReasoningOverride() {
+        val chats = listOf(
+            ProjectChat(id = "c1", title = "Boosted", createdAtMillis = 1L, updatedAtMillis = 2L, reasoningOverride = 3),
+            ProjectChat(id = "c2", title = "Following", createdAtMillis = 3L, updatedAtMillis = 4L),
+        )
+
+        val parsed = chatsFromIndexJson(JSONArray(chatIndexJson(chats).toString()))
+
+        assertEquals(3, parsed.first { it.id == "c1" }.reasoningOverride)
+        assertEquals(-1, parsed.first { it.id == "c2" }.reasoningOverride)
+    }
+
+    @Test
+    fun legacyChatIndexEntriesWithoutReasoningFieldFollowSettings() {
+        val legacy = JSONArray().apply {
+            put(JSONObject().put("id", "old").put("title", "Legacy chat"))
+        }
+
+        assertEquals(-1, chatsFromIndexJson(legacy).single().reasoningOverride)
+    }
 }

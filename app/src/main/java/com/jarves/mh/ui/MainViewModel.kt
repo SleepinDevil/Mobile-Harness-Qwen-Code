@@ -470,7 +470,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         secretFor = { profile -> vault.get(profile.kind.name) },
         contextWindowTokens = { _state.value.dshContextWindowTokens },
         maxOutputTokens = { _state.value.dshMaxOutputTokens },
-        reasoningEffortsPreset = { _state.value.dshReasoningEffortsPreset },
+        reasoningEffortsPreset = { effectiveReasoningValue(activeChatReasoningOverride(), _state.value.dshReasoningEffortsPreset) },
     )
     private val qwenRuntime = QwenRuntimeBridge(
         application,
@@ -481,7 +481,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         autoCompactPercent = { _state.value.qwenAutoCompactPercent },
         subagentsEnabled = { _state.value.qwenSubagentsEnabled },
         maxConcurrentSubagents = { _state.value.qwenMaxConcurrentSubagents },
-        reasoningEffort = { _state.value.qwenReasoningEffort },
+        reasoningEffort = { effectiveReasoningValue(activeChatReasoningOverride(), _state.value.qwenReasoningEffort) },
         maxToolCalls = { _state.value.qwenMaxToolCalls },
         shellTimeoutMs = { _state.value.qwenShellTimeoutMs },
     )
@@ -5895,6 +5895,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
         preferences.saveProjectChats(project.id, _state.value.projectChats)
     }
+    /**
+     * Overrides the reasoning level for the chat that is open right now without
+     * touching the global Settings value. The pick applies from this chat's next
+     * message onward (agent settings are rewritten per run) and is inherited by
+     * subagents spawned in this chat, which share the same settings file.
+     * -1 restores following Settings.
+     */
+    fun setChatReasoningOverride(value: Int) {
+        val current = _state.value
+        val project = current.activeProject ?: return
+        val chatId = current.activeChatId ?: return
+        val options = when (current.agentKind) {
+            AgentKind.QWEN_CODE -> QWEN_REASONING_EFFORTS.size
+            AgentKind.DEEPSEEK_HARNESS -> (DSH_REASONING_EFFORT_PRESETS.keys.maxOrNull() ?: 0) + 1
+            else -> return
+        }
+        val coerced = value.coerceIn(-1, options - 1)
+        _state.update { state ->
+            state.copy(
+                projectChats = state.projectChats.map { chat ->
+                    if (chat.id == chatId) chat.copy(reasoningOverride = coerced) else chat
+                },
+            )
+        }
+        preferences.saveProjectChats(project.id, _state.value.projectChats)
+    }
+
+    /** Reasoning override stored on the chat that is open right now (-1 = follow Settings). */
+    private fun activeChatReasoningOverride(): Int = _state.value.let { s ->
+        s.projectChats.firstOrNull { it.id == s.activeChatId }?.reasoningOverride ?: -1
+    }
 
     override fun onCleared() {
         stopAndroidLogcat()
@@ -5950,3 +5981,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private const val TEST_OPENROUTER_MODEL = "stealth/ox-alpha"
     }
 }
+/** Chat-scoped override wins once set; -1 keeps following the global Settings value. */
+internal fun effectiveReasoningValue(reasoningOverride: Int, globalValue: Int): Int =
+    if (reasoningOverride >= 0) reasoningOverride else globalValue

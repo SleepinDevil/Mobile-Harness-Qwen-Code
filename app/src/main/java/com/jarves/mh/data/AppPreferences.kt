@@ -342,17 +342,7 @@ class AppPreferences(private val context: Context) {
 
     fun saveProjectChats(projectId: String, chats: List<ProjectChat>) {
         val projectDir = File(chatsDir, projectId).also { it.mkdirs() }
-        val arr = JSONArray()
-        chats.forEach { chat ->
-            arr.put(JSONObject().apply {
-                put("id", chat.id)
-                put("title", chat.title)
-                put("createdAtMillis", chat.createdAtMillis)
-                put("updatedAtMillis", chat.updatedAtMillis)
-                put("totalTokens", chat.totalTokens)
-            })
-        }
-        File(projectDir, "index.json").writeText(arr.toString())
+        File(projectDir, "index.json").writeText(chatIndexJson(chats).toString())
     }
 
     fun loadProjectChats(projectId: String): List<ProjectChat> {
@@ -361,16 +351,7 @@ class AppPreferences(private val context: Context) {
         if (index.exists()) {
             return runCatching {
                 val arr = JSONArray(index.readText())
-                (0 until arr.length()).map { i ->
-                    val obj = arr.getJSONObject(i)
-                    ProjectChat(
-                        id = obj.getString("id"),
-                        title = obj.optString("title", "Chat"),
-                        createdAtMillis = obj.optLong("createdAtMillis", System.currentTimeMillis()),
-                        updatedAtMillis = obj.optLong("updatedAtMillis", System.currentTimeMillis()),
-                        totalTokens = obj.optLong("totalTokens", 0L),
-                    )
-                }.sortedByDescending { it.updatedAtMillis }
+                chatsFromIndexJson(arr).sortedByDescending { it.updatedAtMillis }
             }.getOrDefault(emptyList())
         }
 
@@ -526,3 +507,30 @@ internal fun chatExportJson(chat: ProjectChat, messages: JSONArray): String = JS
     put("totalTokens", chat.totalTokens)
     put("messages", messages)
 }.toString()
+/** Chat index rows as stored in `chats/<projectId>/index.json`. */
+internal fun chatIndexJson(chats: List<ProjectChat>): JSONArray = JSONArray().apply {
+    chats.forEach { chat ->
+        put(JSONObject().apply {
+            put("id", chat.id)
+            put("title", chat.title)
+            put("createdAtMillis", chat.createdAtMillis)
+            put("updatedAtMillis", chat.updatedAtMillis)
+            put("totalTokens", chat.totalTokens)
+            put("reasoningOverride", chat.reasoningOverride)
+        })
+    }
+}
+
+/** Index rows back to chats; entries predating `reasoningOverride` follow Settings (-1). */
+internal fun chatsFromIndexJson(arr: JSONArray): List<ProjectChat> =
+    (0 until arr.length()).map { i ->
+        val obj = arr.getJSONObject(i)
+        ProjectChat(
+            id = obj.getString("id"),
+            title = obj.optString("title", "Chat"),
+            createdAtMillis = obj.optLong("createdAtMillis", System.currentTimeMillis()),
+            updatedAtMillis = obj.optLong("updatedAtMillis", System.currentTimeMillis()),
+            totalTokens = obj.optLong("totalTokens", 0L),
+            reasoningOverride = obj.optInt("reasoningOverride", -1),
+        )
+    }

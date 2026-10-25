@@ -181,4 +181,9 @@
     <string name="ws_preview_external_blocked">التنقل الخارجي محظور في معاينة المشروع</string>
     <string name="ws_open_url">فتح الرابط</string>
     <string name="ws_refresh_preview">تحديث المعاينة</string>
+    <string name="ws_chat_reasoning">مستوى التفكير</string>
+    <string name="ws_chat_reasoning_hint">يسري من الرسالة التالية في هذه المحادثة، بما فيها وكلاؤها الفرعيون. المحادثات الجديدة تتبع الإعدادات.</string>
+    <string name="ws_chat_reasoning_on_chat">مخصص لهذه المحادثة</string>
+    <string name="ws_chat_reasoning_following">حسب الإعدادات</string>
+    <string name="ws_chat_reasoning_follow_settings">العودة إلى الإعدادات</string>
 </resources>
