@@ -76,6 +76,9 @@ class QwenRuntimeBridge(
     private val subagentUsageBase = ConcurrentHashMap<String, Int>()
     private val subagentGenChars = ConcurrentHashMap<String, Int>()
     private val subagentEstEmitted = ConcurrentHashMap<String, Int>()
+    /** Agents detached by `system/task_started`; their tool_result is a launch receipt, not a finish. */
+    private val backgroundedSubagents = ConcurrentHashMap.newKeySet<String>()
+    private val subagentPollStates = ConcurrentHashMap<String, SubagentPollState>()
 
     override suspend fun startSession(projectId: String, projectSlug: String, projectKind: ProjectKind, prompt: String, conversationHistory: List<ChatMessage>, provider: ProviderProfile): String = withContext(Dispatchers.IO + NonCancellable) {
         val sessionId = UUID.randomUUID().toString()
@@ -98,6 +101,8 @@ class QwenRuntimeBridge(
         subagentUsageBase.clear()
         subagentGenChars.clear()
         subagentEstEmitted.clear()
+        backgroundedSubagents.clear()
+        subagentPollStates.clear()
         streamedText.clear()
         streamedThinking.clear()
         eventBus.emit(RuntimeEvent.SessionStarted(sessionId))
@@ -184,6 +189,20 @@ class QwenRuntimeBridge(
             activeProcess = process
             if (userStopRequested) process.destroy()
             coroutineScope {
+                if (subagentsEnabled()) {
+                    // A detached subagent streams NOTHING while it runs, so the
+                    // CLI's per-task files under the guest HOME are polled once a
+                    // second: that is what keeps the monitor badge, per-subagent
+                    // context tokens, and activity lines live (>=1 Hz by design).
+                    val qwenProjectsDir =
+                        File(File(installed.rootfs, QWEN_HOME_GUEST_PATH.removePrefix("/")), "projects")
+                    launch(Dispatchers.IO) {
+                        while (process.isAlive) {
+                            runCatching { pollSubagentTaskFiles(sessionId, qwenProjectsDir, sessionStartedAt) }
+                            delay(SUBAGENT_POLL_INTERVAL_MS)
+                        }
+                    }
+                }
                 var lastDiagnostic = ""
                 val pendingOutput = StringBuilder()
                 val nativeProcess = process as? NativeSpawnProcess
@@ -391,6 +410,8 @@ class QwenRuntimeBridge(
                         sanitizeForDisplay(json.optString("decision_reason").ifBlank { json.optString("message") }),
                     ),
                 )
+                "task_started" -> consumeQwenTaskStarted(sessionId, json.optJSONObject("data"))
+                "task_notification" -> consumeQwenTaskNotification(sessionId, json.optJSONObject("data"))
             }
             "content_block_start" -> {
                 val block = json.optJSONObject("content_block")
@@ -489,7 +510,12 @@ class QwenRuntimeBridge(
                         eventBus.emit(
                             RuntimeEvent.ToolCompleted(sessionId, toolName, sanitizeForDisplay(result), fullDetail = sanitizeFull(result)),
                         )
-                        if (toolName == "agent" && subagentDescriptions.remove(toolId) != null) {
+                        if (toolName == "agent" && !backgroundedSubagents.remove(toolId) &&
+                            subagentDescriptions.remove(toolId) != null
+                        ) {
+                            // Foreground agent: the result is the finish. Background
+                            // (detached) agents keep running; their launch receipt must
+                            // NOT mark them done — `task_notification` finishes those.
                             eventBus.emit(RuntimeEvent.SubagentFinished(sessionId, toolId))
                         }
                     }
@@ -572,6 +598,100 @@ class QwenRuntimeBridge(
             }
         }
     }
+
+    /**
+     * `system/task_started`: the agent tool detached its subagent (background
+     * mode, always on because the bridge exports QWEN_CODE_MAX_BACKGROUND_AGENTS).
+     * From here the subagent's `agent` tool_result is only a launch receipt — the
+     * real finish signal is the matching `system/task_notification`.
+     */
+    private suspend fun consumeQwenTaskStarted(sessionId: String, data: JSONObject?) {
+        val started = qwenTaskStarted(data) ?: return
+        backgroundedSubagents.add(started.callId)
+        if (!subagentDescriptions.containsKey(started.callId)) {
+            subagentDescriptions[started.callId] = started.description
+            eventBus.emit(RuntimeEvent.SubagentStarted(sessionId, started.callId, started.description))
+        }
+    }
+
+    /**
+     * `system/task_notification`: terminal status of a detached subagent,
+     * including the cumulative token usage the live stream never exposes.
+     */
+    private suspend fun consumeQwenTaskNotification(sessionId: String, data: JSONObject?) {
+        val notification = qwenTaskNotification(data) ?: return
+        val state = subagentPollStates.getOrPut(notification.callId) { SubagentPollState() }
+        if (notification.totalTokens > 0 && notification.totalTokens != state.lastUsageTokens) {
+            state.lastUsageTokens = notification.totalTokens
+            eventBus.emit(RuntimeEvent.SubagentUsage(sessionId, notification.callId, notification.totalTokens))
+        }
+        val description = subagentDescriptions[notification.callId] ?: "Subagent"
+        val summary = buildString {
+            append(notification.status.replaceFirstChar(Char::titlecase))
+            if (notification.toolUses > 0) append(" · ${notification.toolUses} tool calls")
+            if (notification.durationMs > 0) append(" · ${(notification.durationMs + 999) / 1000}s")
+        }
+        eventBus.emit(RuntimeEvent.SubagentActivity(sessionId, notification.callId, description, summary))
+        backgroundedSubagents.remove(notification.callId)
+        state.finished = true
+        if (subagentDescriptions.remove(notification.callId) != null) {
+            eventBus.emit(RuntimeEvent.SubagentFinished(sessionId, notification.callId))
+        }
+    }
+
+    /**
+     * One subagent-monitor refresh tick: while a detached subagent runs, stdout
+     * carries nothing about it, so the CLI's per-task files under `/root/.qwen`
+     * are polled once per second for status, per-round token usage, and a fresh
+     * activity line. Also the safety net when `task_started`/`task_notification`
+     * envelopes are missed (status stays honest from the meta file alone).
+     */
+    private suspend fun pollSubagentTaskFiles(sessionId: String, projectsDir: File, startedAtMillis: Long) {
+        for (metaFile in qwenSubagentMetaFiles(projectsDir, startedAtMillis)) {
+            val meta = qwenSubagentMeta(metaFile) ?: continue
+            val state = subagentPollStates.getOrPut(meta.callId) { SubagentPollState() }
+            if (!state.started) {
+                state.started = true
+                if (subagentDescriptions.putIfAbsent(meta.callId, meta.description) == null) {
+                    eventBus.emit(RuntimeEvent.SubagentStarted(sessionId, meta.callId, meta.description))
+                }
+            }
+            if (state.finished) continue
+            val transcript = File(metaFile.parentFile, metaFile.name.removeSuffix(".meta.json") + ".jsonl")
+            qwenSubagentTranscriptDelta(transcript, state.offset)?.let { delta ->
+                state.offset = delta.newOffset
+                if (delta.usageTokens > 0 && delta.usageTokens != state.lastUsageTokens) {
+                    state.lastUsageTokens = delta.usageTokens
+                    eventBus.emit(RuntimeEvent.SubagentUsage(sessionId, meta.callId, delta.usageTokens))
+                }
+                delta.activity?.let {
+                    eventBus.emit(
+                        RuntimeEvent.SubagentActivity(
+                            sessionId,
+                            meta.callId,
+                            subagentDescriptions[meta.callId] ?: "Subagent",
+                            it,
+                        ),
+                    )
+                }
+            }
+            if (meta.finished) {
+                state.finished = true
+                backgroundedSubagents.remove(meta.callId)
+                if (subagentDescriptions.remove(meta.callId) != null) {
+                    eventBus.emit(RuntimeEvent.SubagentFinished(sessionId, meta.callId))
+                }
+            }
+        }
+    }
+
+    /** Per-subagent poll bookkeeping: transcript read offset and emit dedupe. */
+    private class SubagentPollState(
+        var offset: Long = 0L,
+        var started: Boolean = false,
+        var finished: Boolean = false,
+        var lastUsageTokens: Int = 0,
+    )
 
     /**
      * Emits a live token estimate while the model is generating: streamed chars
@@ -1106,6 +1226,143 @@ internal fun qwenLaunchEnvironment(
         put("QWEN_CODE_MAX_BACKGROUND_AGENTS", maxConcurrentSubagents.coerceAtLeast(1).toString())
     }
 }
+
+/** Parsed `system/task_started` payload: a subagent just detached and went live. */
+internal data class QwenTaskStart(val callId: String, val description: String)
+
+internal fun qwenTaskStarted(data: JSONObject?): QwenTaskStart? {
+    if (data == null) return null
+    val callId = data.optString("tool_use_id")
+    if (callId.isBlank()) return null
+    return QwenTaskStart(callId, qwenSubagentDescription(data.optString("description"), data.optString("subagent_type")))
+}
+
+/** Parsed `system/task_notification`: terminal status + cumulative usage. */
+internal data class QwenTaskNotification(
+    val callId: String,
+    val status: String,
+    val totalTokens: Int,
+    val toolUses: Int,
+    val durationMs: Int,
+)
+
+internal fun qwenTaskNotification(data: JSONObject?): QwenTaskNotification? {
+    if (data == null) return null
+    val callId = data.optString("tool_use_id")
+    if (callId.isBlank()) return null
+    val usage = data.optJSONObject("usage")
+    return QwenTaskNotification(
+        callId = callId,
+        status = data.optString("status").ifBlank { "finished" },
+        totalTokens = usage?.optInt("total_tokens") ?: 0,
+        toolUses = usage?.optInt("tool_uses") ?: 0,
+        durationMs = usage?.optInt("duration_ms") ?: 0,
+    )
+}
+
+/** Task statuses that mean the subagent is no longer running. */
+private val QWEN_TASK_FINISHED_STATUSES =
+    setOf("completed", "complete", "failed", "cancelled", "canceled", "stopped", "killed", "error")
+
+/** Parsed `agent-*.meta.json` written per detached subagent under `~/.qwen`. */
+internal data class QwenSubagentMeta(val callId: String, val description: String, val finished: Boolean)
+
+internal fun qwenSubagentMeta(metaFile: File): QwenSubagentMeta? = runCatching {
+    val json = JSONObject(metaFile.readText())
+    val callId = json.optString("toolUseId")
+    if (callId.isBlank()) return null
+    QwenSubagentMeta(
+        callId = callId,
+        description = qwenSubagentDescription(json.optString("description"), json.optString("agentType")),
+        finished = json.optString("status").lowercase() in QWEN_TASK_FINISHED_STATUSES,
+    )
+}.getOrNull()
+
+/**
+ * Detached-subagent meta files from this app start onwards. Qwen Code writes
+ * `projects/<cwd-slug>/subagents/<session>/agent-<task-id>.meta.json`; the recency
+ * filter keeps stale files of older sessions (e.g. crashed runs still marked
+ * `running`) out of the live monitor.
+ */
+internal fun qwenSubagentMetaFiles(projectsDir: File, notBeforeMillis: Long): List<File> =
+    projectsDir.listFiles()?.flatMap { project ->
+        File(project, "subagents").listFiles()?.flatMap { session ->
+            session.listFiles()?.filter {
+                it.isFile && it.name.startsWith("agent-") && it.name.endsWith(".meta.json")
+            }.orEmpty()
+        }.orEmpty()
+    }.orEmpty().filter { it.lastModified() >= notBeforeMillis - SUBAGENT_POLL_RECENTNESS_GRACE_MS }
+
+/** One subagent-transcript poll tick: [newOffset] plus whatever the new lines carry. */
+internal data class QwenSubagentDelta(val newOffset: Long, val usageTokens: Int, val activity: String?)
+
+/**
+ * Incrementally reads the tail of a detached subagent's append-only transcript.
+ * Reports the newest round's context accounting (`usageMetadata.totalTokenCount`)
+ * and a one-line label for the last new record (tool call or reply preview).
+ * [offset] is the byte offset from the previous tick; a truncation restarts at 0.
+ */
+internal fun qwenSubagentTranscriptDelta(transcript: File, offset: Long): QwenSubagentDelta? {
+    val length = transcript.length()
+    if (length == 0L) return null
+    val start = if (offset > length) 0L else offset
+    if (length <= start) return null
+    val count = minOf(length - start, SUBAGENT_TRANSCRIPT_POLL_CAP_BYTES.toLong()).toInt()
+    val bytes = runCatching {
+        RandomAccessFile(transcript, "r").use { file ->
+            file.seek(start)
+            val buffer = ByteArray(count)
+            val read = file.read(buffer)
+            if (read < count) buffer.copyOf(read.coerceAtLeast(0)) else buffer
+        }
+    }.getOrNull() ?: return null
+    var cut = -1
+    for (index in bytes.size - 1 downTo 0) {
+        if (bytes[index] == '\n'.code.toByte()) {
+            cut = index
+            break
+        }
+    }
+    if (cut < 0) return null
+    var usageTokens = 0
+    var activity: String? = null
+    String(bytes, 0, cut + 1, Charsets.UTF_8).lineSequence().forEach { raw ->
+        if (raw.isBlank()) return@forEach
+        val record = runCatching { JSONObject(raw) }.getOrNull() ?: return@forEach
+        record.optJSONObject("usageMetadata")
+            ?.takeUnless { it.isNull("totalTokenCount") }
+            ?.optInt("totalTokenCount")
+            ?.takeIf { it > 0 }
+            ?.let { usageTokens = it }
+        qwenSubagentRecordLabel(record)?.let { activity = it }
+    }
+    return QwenSubagentDelta(start + cut + 1L, usageTokens, activity)
+}
+
+/** Activity label for one transcript record: tool call name or text preview. */
+private fun qwenSubagentRecordLabel(record: JSONObject): String? {
+    val parts = record.optJSONObject("message")?.optJSONArray("parts") ?: return null
+    for (index in 0 until parts.length()) {
+        val part = parts.optJSONObject(index) ?: continue
+        part.optJSONObject("functionCall")?.optString("name")?.takeIf(String::isNotBlank)?.let {
+            return "Using $it"
+        }
+        part.optString("text").takeIf(String::isNotBlank)?.let { text ->
+            val preview = text.replace(Regex("\\s+"), " ").trim()
+            return if (preview.length > 70) preview.take(70) + "…" else preview
+        }
+    }
+    return null
+}
+
+private fun qwenSubagentDescription(description: String, type: String): String {
+    val ask = description.ifBlank { "Subagent" }
+    return type.takeIf(String::isNotBlank)?.let { "$ask · $it" } ?: ask
+}
+
+private const val SUBAGENT_POLL_INTERVAL_MS = 1_000L
+private const val SUBAGENT_POLL_RECENTNESS_GRACE_MS = 30_000L
+private const val SUBAGENT_TRANSCRIPT_POLL_CAP_BYTES = 256 * 1024
 
 /**
  * Character budget for the replayed chat history. Sessions are one-shot, so the

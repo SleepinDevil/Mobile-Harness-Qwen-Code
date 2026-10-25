@@ -6,6 +6,7 @@ import com.jarves.mh.model.ProviderProfile
 import com.jarves.mh.model.ProviderProtocol
 import com.jarves.mh.model.providerProtocolForAgent
 import com.jarves.mh.model.providersForAgent
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -276,6 +277,113 @@ class QwenBridgeTest {
         assertEquals(3_645, usage.totalTokens)
         assertNull(qwenTokenUsage(JSONObject()))
         assertNull(qwenTokenUsage(JSONObject().put("usage", JSONObject())))
+    }
+
+    // Envelopes below are byte-faithful captures from the shipped qwen-code
+    // 0.25.3 CLI running a detached (background) agent.
+
+    @Test
+    fun taskStartedEnvelopeNamesDetachedSubagent() {
+        val envelope = JSONObject(
+            """{"type":"system","subtype":"task_started","session_id":"e98e",
+               "parent_tool_use_id":null,
+               "data":{"task_id":"Explore-call_agent_1","tool_use_id":"call_agent_1",
+                       "description":"research X","subagent_type":"Explore"}}""",
+        )
+        val start = qwenTaskStarted(envelope.optJSONObject("data"))
+        assertNotNull(start)
+        assertEquals("call_agent_1", start!!.callId)
+        assertEquals("research X · Explore", start.description)
+        assertNull(qwenTaskStarted(JSONObject()))
+        assertNull(qwenTaskStarted(JSONObject().put("tool_use_id", "  ")))
+    }
+
+    @Test
+    fun taskNotificationCarriesTerminalStatusAndCumulativeTokens() {
+        val notification = qwenTaskNotification(
+            JSONObject(
+                """{"task_id":"Explore-call_agent_1","tool_use_id":"call_agent_1",
+                   "status":"completed",
+                   "usage":{"total_tokens":1280,"tool_uses":3,"duration_ms":5400}}""",
+            ),
+        )
+        assertNotNull(notification)
+        assertEquals("call_agent_1", notification!!.callId)
+        assertEquals("completed", notification.status)
+        assertEquals(1_280, notification.totalTokens)
+        assertEquals(3, notification.toolUses)
+        assertEquals(5_400, notification.durationMs)
+        assertNull(qwenTaskNotification(null))
+    }
+
+    @Test
+    fun subagentMetaFileReportsRunningAndFinishedTasks() = withQwenTempDirectory { root ->
+        val running = File(root, "agent-Explore-call_1.meta.json")
+        running.writeText(
+            """{"agentId":"Explore-call_1","agentType":"Explore","description":"research X",
+               "toolUseId":"call_1","status":"running","isBackgrounded":true,"depth":0}""",
+        )
+        val meta = qwenSubagentMeta(running)
+        assertNotNull(meta)
+        assertEquals("call_1", meta!!.callId)
+        assertEquals("research X · Explore", meta.description)
+        assertFalse(meta.finished)
+        File(root, "agent-Explore-call_1.meta.json").writeText(
+            """{"toolUseId":"call_1","agentType":"Explore","description":"research X","status":"completed"}""",
+        )
+        assertTrue(qwenSubagentMeta(running)!!.finished)
+        File(root, "broken.meta.json").writeText("{")
+        assertNull(qwenSubagentMeta(File(root, "broken.meta.json")))
+    }
+
+    @Test
+    fun metaFileScanSkipsStaleAndNonMetaFiles() = withQwenTempDirectory { root ->
+        val session = File(File(root, "projects/-workspace-demo/subagents"), "32e4")
+        check(session.mkdirs())
+        val fresh = File(session, "agent-Explore-call_1.meta.json")
+        fresh.writeText("{}")
+        File(session, "agent-Explore-call_1.jsonl").writeText("{}")
+        val stale = File(session, "agent-old-call_0.meta.json")
+        stale.writeText("{}")
+        stale.setLastModified(System.currentTimeMillis() - 24L * 3_600_000L)
+        val found = qwenSubagentMetaFiles(File(root, "projects"), System.currentTimeMillis() - 60_000L)
+        assertEquals(listOf(fresh), found)
+    }
+
+    @Test
+    fun transcriptDeltaTracksTokensAndActivityPerAppend() = withQwenTempDirectory { root ->
+        val transcript = File(root, "agent-Explore-call_1.jsonl")
+        transcript.writeText(
+            """{"uuid":"u1","type":"user","agentId":"Explore-call_1","isSidechain":true,"message":{"role":"user","parts":[{"text":"Research X and report the answer."}]}}""" + "\n",
+        )
+        val first = qwenSubagentTranscriptDelta(transcript, 0L)
+        assertNotNull(first)
+        assertEquals(0, first!!.usageTokens)
+        assertEquals("Research X and report the answer.", first.activity)
+        assertNull(qwenSubagentTranscriptDelta(transcript, first.newOffset))
+        transcript.appendText(
+            """{"uuid":"u2","type":"assistant","agentId":"Explore-call_1","isSidechain":true,"message":{"role":"model","parts":[{"text":"Research complete: X is 42."}]},"usageMetadata":{"promptTokenCount":450,"candidatesTokenCount":40,"totalTokenCount":490}}""" + "\n",
+        )
+        val second = qwenSubagentTranscriptDelta(transcript, first.newOffset)
+        assertNotNull(second)
+        assertEquals(490, second!!.usageTokens)
+        assertEquals("Research complete: X is 42.", second.activity)
+        // A trailing half line (still being written) is held back for the next tick.
+        transcript.appendText("""{"uuid":"u3","type":"assistant","message":{"role":"model","parts":[{"text":"half""")
+        assertNull(qwenSubagentTranscriptDelta(transcript, second.newOffset))
+        transcript.appendText("\"}]}}\n")
+        val third = qwenSubagentTranscriptDelta(transcript, second.newOffset)
+        assertEquals("half", third!!.activity)
+        assertEquals(490, qwenSubagentTranscriptDelta(transcript, 0L)?.usageTokens)
+    }
+
+    private fun withQwenTempDirectory(block: (java.io.File) -> Unit) {
+        val root = java.nio.file.Files.createTempDirectory("mh-qwen-subagent").toFile()
+        try {
+            block(root)
+        } finally {
+            root.deleteRecursively()
+        }
     }
 
     private fun qwenTestRoute() = QwenRoute(
