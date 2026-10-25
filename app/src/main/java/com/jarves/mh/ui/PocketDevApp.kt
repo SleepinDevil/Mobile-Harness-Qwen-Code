@@ -33,10 +33,8 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -439,6 +437,9 @@ fun PocketDevApp(viewModel: MainViewModel = viewModel()) {
             onKeepFileChange = viewModel::keepFileChange,
             onCreateChat = viewModel::createChat,
             onSwitchChat = viewModel::switchChat,
+            onRenameChat = viewModel::renameChat,
+            onDeleteChat = viewModel::deleteChat,
+            onExportChatJson = viewModel::exportChatJson,
             onTerminalRun = viewModel::requestProjectTerminalCommand,
             onTerminalInput = viewModel::sendProjectTerminalInput,
             onTerminalInterrupt = viewModel::interruptProjectTerminalCommand,
@@ -4391,6 +4392,9 @@ private fun WorkspaceScreen(
     onKeepFileChange: (String) -> Unit,
     onCreateChat: () -> Unit,
     onSwitchChat: (String) -> Unit,
+    onRenameChat: (String, String) -> Unit,
+    onDeleteChat: (String) -> Unit,
+    onExportChatJson: (String) -> Unit,
     onTerminalRun: (String) -> Unit,
     onTerminalInput: (String) -> Unit,
     onTerminalInterrupt: () -> Unit,
@@ -4605,6 +4609,10 @@ private fun WorkspaceScreen(
                 showChats = false
                 selectedTab = WorkspaceTab.CHAT
             },
+            manageChats = true,
+            onChatRename = onRenameChat,
+            onChatDelete = onDeleteChat,
+            onChatExport = onExportChatJson,
         )
     }
     state.pendingTerminalCommand?.let { command ->
@@ -4808,7 +4816,7 @@ private fun WorkspaceScreen(
             if (selectedTab == WorkspaceTab.CHAT && state.agentKind == AgentKind.QWEN_CODE) {
                 Column(
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
+                        .fillMaxWidth()
                         .padding(top = 8.dp, end = 12.dp)
                         .animateContentSize(),
                     horizontalAlignment = Alignment.End,
@@ -4822,8 +4830,8 @@ private fun WorkspaceScreen(
                             prompt = state.contextPromptTokens,
                             cached = state.contextCachedTokens,
                             output = state.contextOutputTokens,
-                            sessionTotal = state.contextSessionTotalTokens,
-                            subagentTotal = state.subagents.sumOf { it.contextTokens },
+                            sessionTotal = activeChat?.totalTokens ?: 0L,
+                            subagentTotal = state.subagents.sumOf { it.contextTokens.toLong() },
                         ),
                     )
                     if (state.qwenSubagentsEnabled && state.qwenMaxConcurrentSubagents >= 1) {
@@ -4838,6 +4846,7 @@ private fun WorkspaceScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ChatSwitcherDialog(
     chats: List<ProjectChat>,
@@ -4847,7 +4856,12 @@ private fun ChatSwitcherDialog(
     onCreate: () -> Unit,
     onSwitch: (String) -> Unit,
     allowCreate: Boolean = true,
+    manageChats: Boolean = false,
+    onChatRename: (String, String) -> Unit = { _, _ -> },
+    onChatDelete: (String) -> Unit = {},
+    onChatExport: (String) -> Unit = {},
 ) {
+    var infoChatId by rememberSaveable { mutableStateOf<String?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.ws_project_chats)) },
@@ -4866,7 +4880,12 @@ private fun ChatSwitcherDialog(
                 LazyColumn(Modifier.fillMaxWidth().heightIn(max = 380.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(chats, key = { it.id }) { chat ->
                         Surface(
-                            modifier = Modifier.fillMaxWidth().clickable(enabled = switchingEnabled) { onSwitch(chat.id) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .combinedClickable(
+                                    onClick = { if (switchingEnabled) onSwitch(chat.id) },
+                                    onLongClick = { if (manageChats) infoChatId = chat.id },
+                                ),
                             shape = RoundedCornerShape(12.dp),
                             color = if (chat.id == activeChatId) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
                         ) {
@@ -4889,6 +4908,116 @@ private fun ChatSwitcherDialog(
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) } },
+    )
+
+    val infoChat = if (manageChats) chats.firstOrNull { it.id == infoChatId } else null
+    if (infoChat != null) {
+        ChatInfoDialog(
+            chat = infoChat,
+            canDelete = switchingEnabled && chats.size > 1,
+            onDismiss = { infoChatId = null },
+            onExport = { onChatExport(infoChat.id) },
+            onRename = { name -> onChatRename(infoChat.id, name) },
+            onDelete = { infoChatId = null; onChatDelete(infoChat.id) },
+        )
+    }
+}
+
+@Composable
+private fun ChatInfoDialog(
+    chat: ProjectChat,
+    canDelete: Boolean,
+    onDismiss: () -> Unit,
+    onExport: () -> Unit,
+    onRename: (String) -> Unit,
+    onDelete: () -> Unit,
+) {
+    var renaming by rememberSaveable { mutableStateOf(false) }
+    var nameDraft by rememberSaveable { mutableStateOf(chat.title) }
+    var confirmDelete by rememberSaveable { mutableStateOf(false) }
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text(stringResource(R.string.ws_chat_delete_title)) },
+            text = { Text(stringResource(R.string.ws_chat_delete_desc)) },
+            confirmButton = {
+                TextButton(onClick = onDelete) { Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
+        return
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            if (renaming) {
+                OutlinedTextField(
+                    value = nameDraft,
+                    onValueChange = { nameDraft = it },
+                    label = { Text(stringResource(R.string.ws_chat_info_name)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                Text(chat.localizedTitle(), maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = stringResource(
+                        R.string.ws_chat_info_tokens,
+                        NumberFormat.getIntegerInstance().format(chat.totalTokens),
+                    ),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = stringResource(
+                        R.string.ws_chat_info_updated,
+                        SimpleDateFormat.getDateTimeInstance(SimpleDateFormat.MEDIUM, SimpleDateFormat.SHORT)
+                            .format(Date(chat.updatedAtMillis)),
+                    ),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        confirmButton = {
+            if (renaming) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(
+                        onClick = { onRename(nameDraft.trim()); renaming = false },
+                        enabled = nameDraft.isNotBlank(),
+                    ) { Text(stringResource(R.string.action_save)) }
+                    TextButton(onClick = { nameDraft = chat.title; renaming = false }) {
+                        Text(stringResource(R.string.action_cancel))
+                    }
+                }
+            } else {
+                TextButton(onClick = { nameDraft = chat.title; renaming = true }) {
+                    Text(stringResource(R.string.ws_chat_info_rename))
+                }
+            }
+        },
+        dismissButton = {
+            if (!renaming) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(onClick = onExport) {
+                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(stringResource(R.string.ws_chat_info_download))
+                    }
+                    if (canDelete) {
+                        TextButton(onClick = { confirmDelete = true }) {
+                            Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+            }
+        },
     )
 }
 
@@ -7511,8 +7640,8 @@ private fun SubagentMonitor(
     ) {
         AnimatedVisibility(
             visible = expanded,
-            enter = fadeIn() + expandHorizontally(),
-            exit = fadeOut() + shrinkHorizontally(),
+            enter = fadeIn(),
+            exit = fadeOut(),
         ) {
             Surface(
                 shape = RoundedCornerShape(14.dp),
@@ -7694,6 +7823,12 @@ private fun formatTokenCount(tokens: Int): String = when {
     else -> tokens.toString()
 }
 
+private fun formatTokenCount(tokens: Long): String = when {
+    tokens >= 1_000_000 -> "%.1fM".format(tokens / 1_000_000.0).replace(".0M", "M")
+    tokens >= 1_000 -> "%.1fk".format(tokens / 1_000.0).replace(".0k", "k")
+    else -> tokens.toString()
+}
+
 /** Display metrics for the floating context gauge; all values in tokens. */
 private data class ContextGaugeData(
     val used: Int,
@@ -7702,8 +7837,8 @@ private data class ContextGaugeData(
     val prompt: Int,
     val cached: Int,
     val output: Int,
-    val sessionTotal: Int,
-    val subagentTotal: Int,
+    val sessionTotal: Long,
+    val subagentTotal: Long,
 )
 
 /**
@@ -7738,8 +7873,8 @@ private fun ContextGauge(data: ContextGaugeData, modifier: Modifier = Modifier) 
     ) {
         AnimatedVisibility(
             visible = expanded,
-            enter = fadeIn() + expandHorizontally(),
-            exit = fadeOut() + shrinkHorizontally(),
+            enter = fadeIn(),
+            exit = fadeOut(),
         ) {
             Surface(
                 shape = RoundedCornerShape(14.dp),

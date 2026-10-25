@@ -433,6 +433,8 @@ data class ProjectChat(
     val title: String = "New chat",
     val createdAtMillis: Long = System.currentTimeMillis(),
     val updatedAtMillis: Long = System.currentTimeMillis(),
+    /** Lifetime sum of provider-reported tokens for every API call in this chat. */
+    val totalTokens: Long = 0L,
 )
 
 enum class DiffLineType { CONTEXT, ADDITION, DELETION, INFO }

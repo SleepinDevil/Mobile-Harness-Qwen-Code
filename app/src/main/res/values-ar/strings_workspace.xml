@@ -6,8 +6,16 @@
     <string name="ws_subagents_none">لا يوجد وكلاء فرعيون في هذه المهمة بعد.</string>
     <string name="ws_context_prompt_output">مطالبة %1$s · توليد %2$s</string>
     <string name="ws_context_cached">مخبأ %1$s</string>
-    <string name="ws_context_session_total">إجمالي الجلسة %1$s</string>
+    <string name="ws_context_session_total">إجمالي المحادثة %1$s</string>
     <string name="ws_context_subagents_total">إجمالي الوكلاء الفرعيين %1$s</string>
+    <string name="ws_chat_info_tokens">إجمالي الرموز: %1$s</string>
+    <string name="ws_chat_info_updated">آخر تحديث: %1$s</string>
+    <string name="ws_chat_info_download">تنزيل JSON</string>
+    <string name="ws_chat_info_rename">إعادة تسمية</string>
+    <string name="ws_chat_info_name">اسم المحادثة</string>
+    <string name="ws_chat_delete_title">حذف المحادثة؟</string>
+    <string name="ws_chat_delete_desc">سيُحذف سجل المحادثة نهائيًا. لا يمكن التراجع.</string>
+    <string name="ws_chat_delete_last">المشروع يحتاج إلى محادثة واحدة على الأقل</string>
     <string name="ws_subagents_title">‏وكلاء فرعيون</string>
     <string name="ws_subagent_done">‏تم</string>
     <string name="ws_subagent_thinking">‏تفكير</string>

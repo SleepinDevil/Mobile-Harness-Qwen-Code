@@ -6,8 +6,16 @@
     <string name="ws_subagents_none">No subagents in this task yet.</string>
     <string name="ws_context_prompt_output">Prompt %1$s · Generated %2$s</string>
     <string name="ws_context_cached">Cached %1$s</string>
-    <string name="ws_context_session_total">Session total %1$s</string>
+    <string name="ws_context_session_total">Chat total %1$s</string>
     <string name="ws_context_subagents_total">Subagents total %1$s</string>
+    <string name="ws_chat_info_tokens">Total tokens: %1$s</string>
+    <string name="ws_chat_info_updated">Updated: %1$s</string>
+    <string name="ws_chat_info_download">Download JSON</string>
+    <string name="ws_chat_info_rename">Rename</string>
+    <string name="ws_chat_info_name">Chat name</string>
+    <string name="ws_chat_delete_title">Delete chat?</string>
+    <string name="ws_chat_delete_desc">The chat history is permanently deleted. This cannot be undone.</string>
+    <string name="ws_chat_delete_last">A project needs at least one chat</string>
     <string name="ws_subagents_title">Subagents</string>
     <string name="ws_subagent_done">Done</string>
     <string name="ws_subagent_thinking">Thinking</string>

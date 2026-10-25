@@ -6,8 +6,16 @@
     <string name="ws_subagents_none">此任务暂无子代理。</string>
     <string name="ws_context_prompt_output">提示 %1$s · 生成 %2$s</string>
     <string name="ws_context_cached">缓存 %1$s</string>
-    <string name="ws_context_session_total">本会话总计 %1$s</string>
+    <string name="ws_context_session_total">聊天总计 %1$s</string>
     <string name="ws_context_subagents_total">子代理总计 %1$s</string>
+    <string name="ws_chat_info_tokens">总令牌数：%1$s</string>
+    <string name="ws_chat_info_updated">更新于：%1$s</string>
+    <string name="ws_chat_info_download">下载 JSON</string>
+    <string name="ws_chat_info_rename">重命名</string>
+    <string name="ws_chat_info_name">聊天名称</string>
+    <string name="ws_chat_delete_title">删除聊天？</string>
+    <string name="ws_chat_delete_desc">聊天记录将被永久删除，此操作无法撤销。</string>
+    <string name="ws_chat_delete_last">项目至少需要一个聊天</string>
     <string name="ws_subagents_title">子代理</string>
     <string name="ws_subagent_done">已完成</string>
     <string name="ws_subagent_thinking">思考</string>

@@ -401,8 +401,6 @@ data class AppUiState(
     val contextPromptTokens: Int = 0,
     val contextCachedTokens: Int = 0,
     val contextOutputTokens: Int = 0,
-    /** Cumulative prompt+completion tokens over all API calls of this chat. */
-    val contextSessionTotalTokens: Int = 0,
     /** Chat the context counters above belong to; totals restart on a new chat. */
     val contextSessionChatId: String? = null,
     val claudeMaxTurns: Int = ClaudeRuntimeBridge.DEFAULT_MAX_TURNS,
@@ -4143,6 +4141,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 taskFinishedAtMillis = null,
                 pendingApproval = null,
                 pendingAttachments = emptyList(),
+                contextUsedTokens = 0,
+                contextEstimatedTokens = 0,
+                contextPromptTokens = 0,
+                contextCachedTokens = 0,
+                contextOutputTokens = 0,
+                contextSessionChatId = null,
             )
         }
     }
@@ -4164,7 +4168,114 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 taskFinishedAtMillis = null,
                 pendingApproval = null,
                 pendingAttachments = emptyList(),
+                contextUsedTokens = 0,
+                contextEstimatedTokens = 0,
+                contextPromptTokens = 0,
+                contextCachedTokens = 0,
+                contextOutputTokens = 0,
+                contextSessionChatId = null,
             )
+        }
+    }
+
+    /**
+     * Adds one API call's exact token count to the chat's persisted total in
+     * the chat index, keeping per-chat usage across app restarts.
+     */
+    private fun accumulateChatTokens(usedTokens: Int) {
+        val current = _state.value
+        val project = current.activeProject ?: return
+        val chatId = current.activeChatId ?: return
+        _state.update { state ->
+            state.copy(
+                projectChats = state.projectChats.map { chat ->
+                    if (chat.id == chatId) chat.copy(totalTokens = chat.totalTokens + usedTokens) else chat
+                },
+            )
+        }
+        preferences.saveProjectChats(project.id, _state.value.projectChats)
+    }
+
+    fun renameChat(chatId: String, newTitle: String) {
+        val project = _state.value.activeProject ?: return
+        val title = newTitle.trim().take(80)
+        if (title.isEmpty()) return
+        _state.update { state ->
+            state.copy(
+                projectChats = state.projectChats.map { chat ->
+                    if (chat.id == chatId) chat.copy(title = title) else chat
+                },
+            )
+        }
+        preferences.saveProjectChats(project.id, _state.value.projectChats)
+    }
+
+    /** Permanently deletes one chat together with its saved transcript file. */
+    fun deleteChat(chatId: String) {
+        val current = _state.value
+        val project = current.activeProject ?: return
+        if (current.isRunning) return
+        val remaining = current.projectChats.filterNot { it.id == chatId }
+        if (remaining.size == current.projectChats.size) return
+        if (remaining.isEmpty()) {
+            _state.update { it.copy(toastMessage = str(R.string.ws_chat_delete_last)) }
+            return
+        }
+        preferences.deleteChatMessages(project.id, chatId)
+        preferences.saveProjectChats(project.id, remaining)
+        val wasActive = current.activeChatId == chatId
+        val next = remaining.first()
+        _state.update { state ->
+            if (!wasActive) {
+                state.copy(projectChats = remaining)
+            } else {
+                state.copy(
+                    projectChats = remaining,
+                    activeChatId = next.id,
+                    messages = preferences.loadMessages(project.id, next.id)
+                        .ifEmpty { listOf(ChatMessage(fromUser = false, text = "Hi! Tell me what you want to build or change.")) },
+                    liveProcess = emptyList(),
+                    liveThinking = false,
+                    taskStartedAtMillis = null,
+                    taskFinishedAtMillis = null,
+                    pendingApproval = null,
+                    pendingAttachments = emptyList(),
+                    contextUsedTokens = 0,
+                    contextEstimatedTokens = 0,
+                    contextPromptTokens = 0,
+                    contextCachedTokens = 0,
+                    contextOutputTokens = 0,
+                    contextSessionChatId = null,
+                )
+            }
+        }
+    }
+
+    /** Shares the whole chat (metadata, persisted token total, messages) as one JSON file. */
+    fun exportChatJson(chatId: String) {
+        val current = _state.value
+        val project = current.activeProject ?: return
+        val chat = current.projectChats.firstOrNull { it.id == chatId } ?: return
+        runCatching {
+            val app = getApplication<Application>()
+            val json = preferences.buildChatExport(project.id, chatId) ?: error(str(R.string.vm_unknown_error))
+            val exportDir = File(app.filesDir, "exports").apply { mkdirs() }
+            val safeTitle = chat.title.replace(Regex("[^A-Za-z0-9 ._\\-]"), "_").trim().take(48)
+            val file = File(exportDir, "${safeTitle.ifBlank { "chat" }}_${chat.id.take(8)}.json")
+            file.writeText(json)
+            val uri = FileProvider.getUriForFile(app, "${app.packageName}.files", file)
+            app.startActivity(
+                Intent.createChooser(
+                    Intent(Intent.ACTION_SEND).apply {
+                        type = "application/json"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                    },
+                    str(R.string.ws_chat_info_download),
+                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }.onFailure { error ->
+            _state.update { it.copy(toastMessage = str(R.string.fm_failed, error.message ?: str(R.string.vm_unknown_error))) }
         }
     }
 
@@ -5175,6 +5286,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             antigravityAuthController.invalidateSession(event.reason)
         }
         if (event is RuntimeEvent.SessionFailed && retryWithNextApiKey(event)) return
+        if (event is RuntimeEvent.ContextUsage && event.usedTokens > 0 &&
+            _state.value.isRunning && _state.value.activeSessionId == event.sessionId) {
+            accumulateChatTokens(event.usedTokens)
+        }
         _state.update { current ->
             if (!current.isRunning) {
                 current
@@ -5376,7 +5491,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             contextPromptTokens = 0,
                             contextCachedTokens = 0,
                             contextOutputTokens = 0,
-                            contextSessionTotalTokens = 0,
                         )
                     }
                     base.copy(
@@ -5386,7 +5500,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         contextCachedTokens = event.cachedTokens,
                         contextOutputTokens = event.outputTokens,
                         contextEstimatedTokens = 0,
-                        contextSessionTotalTokens = base.contextSessionTotalTokens + event.usedTokens,
                     )
                 }
                 is RuntimeEvent.ContextEstimate -> current.copy(contextEstimatedTokens = event.generatedTokens)

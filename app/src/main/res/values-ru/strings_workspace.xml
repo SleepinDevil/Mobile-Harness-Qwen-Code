@@ -6,8 +6,16 @@
     <string name="ws_subagents_none">В этой задаче пока нет субагентов.</string>
     <string name="ws_context_prompt_output">Запрос %1$s · Ответ %2$s</string>
     <string name="ws_context_cached">Кэш %1$s</string>
-    <string name="ws_context_session_total">Всего за сессию %1$s</string>
+    <string name="ws_context_session_total">Всего в чате %1$s</string>
     <string name="ws_context_subagents_total">Субагенты — всего %1$s</string>
+    <string name="ws_chat_info_tokens">Всего токенов: %1$s</string>
+    <string name="ws_chat_info_updated">Обновлено: %1$s</string>
+    <string name="ws_chat_info_download">Скачать JSON</string>
+    <string name="ws_chat_info_rename">Переименовать</string>
+    <string name="ws_chat_info_name">Название чата</string>
+    <string name="ws_chat_delete_title">Удалить чат?</string>
+    <string name="ws_chat_delete_desc">История чата будет удалена безвозвратно.</string>
+    <string name="ws_chat_delete_last">Проекту нужен хотя бы один чат</string>
     <string name="ws_subagents_title">Субагенты</string>
     <string name="ws_subagent_done">Готово</string>
     <string name="ws_subagent_thinking">Размышление</string>

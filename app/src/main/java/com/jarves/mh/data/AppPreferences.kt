@@ -349,6 +349,7 @@ class AppPreferences(private val context: Context) {
                 put("title", chat.title)
                 put("createdAtMillis", chat.createdAtMillis)
                 put("updatedAtMillis", chat.updatedAtMillis)
+                put("totalTokens", chat.totalTokens)
             })
         }
         File(projectDir, "index.json").writeText(arr.toString())
@@ -367,6 +368,7 @@ class AppPreferences(private val context: Context) {
                         title = obj.optString("title", "Chat"),
                         createdAtMillis = obj.optLong("createdAtMillis", System.currentTimeMillis()),
                         updatedAtMillis = obj.optLong("updatedAtMillis", System.currentTimeMillis()),
+                        totalTokens = obj.optLong("totalTokens", 0L),
                     )
                 }.sortedByDescending { it.updatedAtMillis }
             }.getOrDefault(emptyList())
@@ -385,6 +387,24 @@ class AppPreferences(private val context: Context) {
         saveProjectChats(projectId, listOf(chat))
         if (legacyMessages.isNotEmpty()) saveMessages(projectId, chat.id, legacyMessages)
         return listOf(chat)
+    }
+
+    /** Removes the stored transcript file of one chat (index entry handled by the caller). */
+    fun deleteChatMessages(projectId: String, chatId: String) {
+        runCatching { File(File(chatsDir, projectId), "$chatId.json").delete() }
+    }
+
+    /**
+     * Complete JSON for one chat: its index metadata (title, dates, persisted
+     * token total) wrapping the stored transcript array verbatim. Null when
+     * the chat id is not part of the project's index.
+     */
+    fun buildChatExport(projectId: String, chatId: String): String? {
+        val chat = loadProjectChats(projectId).firstOrNull { it.id == chatId } ?: return null
+        val messages = runCatching {
+            JSONArray(File(File(chatsDir, projectId), "$chatId.json").readText())
+        }.getOrElse { JSONArray() }
+        return chatExportJson(chat, messages)
     }
 
     @Synchronized
@@ -496,3 +516,13 @@ class AppPreferences(private val context: Context) {
         return if (clean.length <= 42) clean else clean.take(39).trimEnd() + "…"
     }
 }
+
+/** Chat index metadata (incl. the persisted token total) wrapping the transcript array. */
+internal fun chatExportJson(chat: ProjectChat, messages: JSONArray): String = JSONObject().apply {
+    put("id", chat.id)
+    put("title", chat.title)
+    put("createdAtMillis", chat.createdAtMillis)
+    put("updatedAtMillis", chat.updatedAtMillis)
+    put("totalTokens", chat.totalTokens)
+    put("messages", messages)
+}.toString()
