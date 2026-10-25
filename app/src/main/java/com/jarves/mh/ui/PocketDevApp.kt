@@ -7653,7 +7653,7 @@ private fun SubagentMonitor(
                     modifier = Modifier
                         .widthIn(max = 260.dp)
                         .padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Text(
                         text = stringResource(R.string.ws_subagents_title),
@@ -7668,46 +7668,53 @@ private fun SubagentMonitor(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    subagents.forEach { subagent ->
-                        Column(
+                    subagents.forEachIndexed { index, subagent ->
+                        Row(
                             Modifier
                                 .fillMaxWidth()
                                 .clickable { openCallId = subagent.callId }
                                 .padding(vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             Text(
-                                text = subagent.description,
+                                text = "${index + 1}",
                                 fontSize = 12.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.width(14.dp),
                             )
-                            Text(
-                                text = if (subagent.running) {
-                                    subagent.activity.ifBlank { stringResource(R.string.ws_subagent_starting) }
-                                } else {
-                                    stringResource(R.string.ws_subagent_done)
-                                },
-                                fontSize = 11.sp,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                color = if (subagent.running) {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                } else {
-                                    MaterialTheme.colorScheme.primary
-                                },
-                            )
-                            if (subagent.contextTokens > 0) {
+                            Column(Modifier.weight(1f)) {
                                 Text(
-                                    text = stringResource(
-                                        R.string.ws_context_usage,
-                                        formatTokenCount(subagent.contextTokens),
-                                        formatTokenCount(maxContextTokens),
-                                    ),
-                                    fontSize = 10.sp,
-                                    color = MaterialTheme.colorScheme.primary,
+                                    text = subagent.description,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Text(
+                                    text = if (subagent.running) {
+                                        subagent.activity.ifBlank { stringResource(R.string.ws_subagent_starting) }
+                                    } else {
+                                        stringResource(R.string.ws_subagent_done)
+                                    },
+                                    fontSize = 11.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    color = if (subagent.running) {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    } else {
+                                        MaterialTheme.colorScheme.primary
+                                    },
                                 )
                             }
+                            TokenRing(
+                                fraction = if (maxContextTokens > 0) {
+                                    (subagent.contextTokens.toFloat() / maxContextTokens).coerceIn(0f, 1f)
+                                } else {
+                                    0f
+                                },
+                            )
                         }
                     }
                 }
@@ -7740,6 +7747,33 @@ private fun SubagentMonitor(
     }
 }
 
+/** Minimal context ring for a monitor row; same gradient as the main gauge. */
+@Composable
+private fun TokenRing(fraction: Float, modifier: Modifier = Modifier) {
+    val animated by animateFloatAsState(fraction, label = "tokenRing")
+    val ringColor = contextGaugeColor(fraction)
+    Box(modifier.size(20.dp), contentAlignment = Alignment.Center) {
+        val trackColor = MaterialTheme.colorScheme.outlineVariant
+        Canvas(Modifier.fillMaxSize()) {
+            val stroke = 2.5.dp.toPx()
+            val radius = (size.minDimension - stroke) / 2
+            val center = Offset(size.width / 2f, size.height / 2f)
+            drawCircle(color = trackColor, radius = radius, center = center, style = Stroke(width = stroke))
+            if (animated > 0f) {
+                drawArc(
+                    color = ringColor,
+                    startAngle = -90f,
+                    sweepAngle = 360f * animated,
+                    useCenter = false,
+                    topLeft = Offset(center.x - radius, center.y - radius),
+                    size = Size(radius * 2f, radius * 2f),
+                    style = Stroke(width = stroke, cap = StrokeCap.Round),
+                )
+            }
+        }
+    }
+}
+
 /** Scrollable prompt/thinking/reply transcript of one subagent, opened from the monitor. */
 @Composable
 private fun SubagentTranscriptDialog(
@@ -7769,18 +7803,30 @@ private fun SubagentTranscriptDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                if (subagent.contextTokens > 0) {
-                    Text(
-                        text = stringResource(
-                            R.string.ws_context_usage,
-                            NumberFormat.getIntegerInstance().format(subagent.contextTokens.toLong()),
-                            NumberFormat.getIntegerInstance().format(maxContextTokens.toLong()),
-                        ),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
+                val usedTokens = subagent.contextTokens
+                val gaugeFraction = if (maxContextTokens > 0) {
+                    (usedTokens.toFloat() / maxContextTokens).coerceIn(0f, 1f)
+                } else {
+                    0f
                 }
+                val gaugeAnimated by animateFloatAsState(gaugeFraction, label = "subagentContextBar")
+                val gaugeColor = contextGaugeColor(gaugeFraction)
+                LinearProgressIndicator(
+                    progress = { gaugeAnimated },
+                    modifier = Modifier.fillMaxWidth().height(8.dp),
+                    color = gaugeColor,
+                    trackColor = MaterialTheme.colorScheme.outlineVariant,
+                )
+                Text(
+                    text = stringResource(
+                        R.string.ws_context_usage,
+                        NumberFormat.getIntegerInstance().format(usedTokens.toLong()),
+                        NumberFormat.getIntegerInstance().format(maxContextTokens.toLong()),
+                    ),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = gaugeColor,
+                )
                 if (subagent.entries.isEmpty()) {
                     Text(
                         stringResource(R.string.ws_subagent_transcript_empty),
@@ -7843,14 +7889,14 @@ private data class ContextGaugeData(
 )
 
 /**
- * Gauge fill color: green under 50%, yellow 50-70%, orange 70-90%, red above,
- * continuously blended between the band anchors for a fluid appearance.
+ * Gauge fill color: blue at 0%, green at 40%, yellow at 70%, orange at 90%,
+ * red at 100%, continuously blended between the band anchors for a fluid look.
  */
 private fun contextGaugeColor(fraction: Float): Color = when {
-    fraction < 0.5f -> lerp(Color(0xFF43A047), Color(0xFFFDD835), fraction / 0.5f)
-    fraction < 0.7f -> lerp(Color(0xFFFDD835), Color(0xFFFB8C00), (fraction - 0.5f) / 0.2f)
-    fraction < 0.9f -> lerp(Color(0xFFFB8C00), Color(0xFFE53935), (fraction - 0.7f) / 0.2f)
-    else -> Color(0xFFE53935)
+    fraction < 0.4f -> lerp(Color(0xFF1E88E5), Color(0xFF43A047), fraction / 0.4f)
+    fraction < 0.7f -> lerp(Color(0xFF43A047), Color(0xFFFDD835), (fraction - 0.4f) / 0.3f)
+    fraction < 0.9f -> lerp(Color(0xFFFDD835), Color(0xFFFB8C00), (fraction - 0.7f) / 0.2f)
+    else -> lerp(Color(0xFFFB8C00), Color(0xFFE53935), ((fraction - 0.9f) / 0.1f).coerceIn(0f, 1f))
 }
 
 /**

@@ -79,6 +79,9 @@ class QwenRuntimeBridge(
     /** Agents detached by `system/task_started`; their tool_result is a launch receipt, not a finish. */
     private val backgroundedSubagents = ConcurrentHashMap.newKeySet<String>()
     private val subagentPollStates = ConcurrentHashMap<String, SubagentPollState>()
+    /** Launch-order number per subagent; attributes child tool rows as "(subagent N)". */
+    private val subagentNumbers = ConcurrentHashMap<String, Int>()
+    private val subagentCounter = java.util.concurrent.atomic.AtomicInteger()
 
     override suspend fun startSession(projectId: String, projectSlug: String, projectKind: ProjectKind, prompt: String, conversationHistory: List<ChatMessage>, provider: ProviderProfile): String = withContext(Dispatchers.IO + NonCancellable) {
         val sessionId = UUID.randomUUID().toString()
@@ -103,6 +106,7 @@ class QwenRuntimeBridge(
         subagentEstEmitted.clear()
         backgroundedSubagents.clear()
         subagentPollStates.clear()
+        subagentNumbers.clear()
         streamedText.clear()
         streamedThinking.clear()
         eventBus.emit(RuntimeEvent.SessionStarted(sessionId))
@@ -556,7 +560,7 @@ class QwenRuntimeBridge(
                     val block = content.optJSONObject(index) ?: continue
                     when (block.optString("type")) {
                         "tool_use" -> {
-                            val (name, detail) = emitToolStarted(sessionId, block, subagent = true)
+                            val (name, detail) = emitToolStarted(sessionId, block, subagentParentCallId = parentCallId)
                             eventBus.emit(
                                 RuntimeEvent.SubagentActivity(
                                     sessionId,
@@ -608,6 +612,7 @@ class QwenRuntimeBridge(
     private suspend fun consumeQwenTaskStarted(sessionId: String, data: JSONObject?) {
         val started = qwenTaskStarted(data) ?: return
         backgroundedSubagents.add(started.callId)
+        subagentNumber(started.callId)
         if (!subagentDescriptions.containsKey(started.callId)) {
             subagentDescriptions[started.callId] = started.description
             eventBus.emit(RuntimeEvent.SubagentStarted(sessionId, started.callId, started.description))
@@ -652,6 +657,7 @@ class QwenRuntimeBridge(
             val state = subagentPollStates.getOrPut(meta.callId) { SubagentPollState() }
             if (!state.started) {
                 state.started = true
+                subagentNumber(meta.callId)
                 if (subagentDescriptions.putIfAbsent(meta.callId, meta.description) == null) {
                     eventBus.emit(RuntimeEvent.SubagentStarted(sessionId, meta.callId, meta.description))
                 }
@@ -762,14 +768,18 @@ class QwenRuntimeBridge(
         }
     }
 
+    /** Display order of one subagent (1-based, assigned at first sight). */
+    private fun subagentNumber(callId: String): Int =
+        subagentNumbers.getOrPut(callId) { subagentCounter.incrementAndGet() }
+
     /** Emits the progress row for one tool_use block and returns (name, detail) for subagent attribution. */
-    private suspend fun emitToolStarted(sessionId: String, block: JSONObject, subagent: Boolean = false): Pair<String, String> {
+    private suspend fun emitToolStarted(sessionId: String, block: JSONObject, subagentParentCallId: String? = null): Pair<String, String> {
         val id = block.optString("id")
         if (id.isNotBlank() && !seenToolCalls.add(id)) return block.optString("name", "Tool") to ""
         val name = block.optString("name", "Tool")
         // The ViewModel matches ToolCompleted rows by tool name, so store and emit
-        // the same attributed ("… (subagent)") label for child calls.
-        val displayName = if (subagent) "$name (subagent)" else name
+        // the same attributed ("… (subagent N)") label for child calls.
+        val displayName = subagentParentCallId?.let { "$name (subagent ${subagentNumber(it)})" } ?: name
         if (id.isNotBlank()) toolNames[id] = displayName
         val input = block.optJSONObject("input") ?: JSONObject()
         val detail = when (name) {
@@ -789,11 +799,12 @@ class QwenRuntimeBridge(
             }
             else -> input.optString("description").ifBlank { "Running $name" }
         }
-        if (!subagent && name == "agent" && id.isNotBlank()) {
+        if (subagentParentCallId == null && name == "agent" && id.isNotBlank()) {
             // The agent-tool call spawns one live subagent; its child turns stream
             // back tagged with this call id, so remember the ask for attribution.
             subagentDescriptions[id] = detail
             eventBus.emit(RuntimeEvent.SubagentStarted(sessionId, id, detail))
+            subagentNumber(id)
         }
         val rawDetail = detail.ifBlank { "Running $displayName" }
         eventBus.emit(

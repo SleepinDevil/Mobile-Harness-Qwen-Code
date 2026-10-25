@@ -172,6 +172,9 @@ fun SettingsScreen(
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
     var expanded by rememberSaveable { mutableStateOf<SettingsSection?>(null) }
+    var harnessQwenOpen by rememberSaveable { mutableStateOf(true) }
+    var harnessClaudeOpen by rememberSaveable { mutableStateOf(false) }
+    var harnessLogsOpen by rememberSaveable { mutableStateOf(false) }
     var terminalCleared by remember { mutableStateOf(false) }
     var showReliabilityHelp by rememberSaveable { mutableStateOf(false) }
     var pendingLogExport by remember { mutableStateOf<((Uri) -> Unit)?>(null) }
@@ -570,12 +573,11 @@ fun SettingsScreen(
                         if (opening) onRefreshHarnessLogs()
                     },
                 ) {
-                    Text(
-                        AgentKind.QWEN_CODE.localizedTitle(),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    HarnessSubSection(
+                        title = AgentKind.QWEN_CODE.localizedTitle(),
+                        expanded = harnessQwenOpen,
+                        onToggle = { harnessQwenOpen = !harnessQwenOpen },
+                    ) {
                     HarnessLimitField(
                         label = stringResource(R.string.st_harness_max_turns),
                         value = state.qwenMaxSessionTurns,
@@ -633,32 +635,34 @@ fun SettingsScreen(
                         maxDigits = 2,
                         onCommit = onSetHarnessQwenMaxSubagents,
                     )
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        AgentKind.CLAUDE_CODE.localizedTitle(),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    }
+                    HarnessSubSection(
+                        title = AgentKind.CLAUDE_CODE.localizedTitle(),
+                        expanded = harnessClaudeOpen,
+                        onToggle = { harnessClaudeOpen = !harnessClaudeOpen },
+                    ) {
                     HarnessLimitField(
                         label = stringResource(R.string.st_harness_max_turns),
                         value = state.claudeMaxTurns,
                         supporting = stringResource(R.string.st_harness_claude_turns_support),
                         onCommit = { onSetHarnessMaxTurns(AgentKind.CLAUDE_CODE, it) },
                     )
+                    }
                     TextButton(onClick = onResetHarnessLimits) {
                         Text(stringResource(R.string.st_harness_reset))
                     }
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.st_harness_logs_title), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    HarnessSubSection(
+                        title = stringResource(R.string.st_harness_logs_title),
+                        expanded = harnessLogsOpen,
+                        onToggle = { harnessLogsOpen = !harnessLogsOpen },
+                    ) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 stringResource(R.string.st_harness_logs_subtitle),
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f),
                             )
-                        }
                         IconButton(onClick = onRefreshHarnessLogs) {
                             Icon(Icons.Default.Refresh, stringResource(R.string.diagnostics_refresh), Modifier.size(18.dp))
                         }
@@ -703,6 +707,7 @@ fun SettingsScreen(
                                 }
                             }
                         }
+                    }
                     }
                 }
             }
@@ -923,6 +928,39 @@ private fun SettingsAccordion(
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { content() }
                 }
             }
+        }
+    }
+}
+
+/** Second-tier collapsible inside the Harness accordion; keeps the panel scannable. */
+@Composable
+private fun HarnessSubSection(
+    title: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                title,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                if (expanded) stringResource(R.string.st_collapse) else stringResource(R.string.st_expand),
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        AnimatedVisibility(expanded) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) { content() }
         }
     }
 }
