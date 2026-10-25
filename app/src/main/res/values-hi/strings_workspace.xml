@@ -18,9 +18,10 @@
     <string name="ws_chat_delete_last">एक प्रोजेक्ट के लिए कम से कम एक चैट चाहिए</string>
     <string name="ws_subagents_title">सबएजेंट</string>
     <string name="ws_subagent_done">पूर्ण</string>
+    <string name="ws_subagent_prompt">प्रॉम्प्ट</string>
     <string name="ws_subagent_thinking">सोच</string>
     <string name="ws_subagent_reply">उत्तर</string>
-    <string name="ws_subagent_transcript_empty">अब्मक कोई सोच या उत्तर संदेश नहीं — इस सबएजेंट ने अब तक केवल उपकरण चलाए हैं।</string>
+    <string name="ws_subagent_transcript_empty">अभी कोई संदेश नहीं — सबएजेंट चलते समय उसका रिकॉर्ड यहाँ दिखेगा।</string>
     <string name="ws_activity_detail_copy">कॉपी करें</string>
     <string name="ws_agy_setup_title">Antigravity सेट अप करें</string>
     <string name="ws_agy_connect_google">अपना Google खाता कनेक्ट करें</string>

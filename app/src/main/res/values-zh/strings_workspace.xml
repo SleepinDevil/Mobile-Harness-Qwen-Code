@@ -18,9 +18,10 @@
     <string name="ws_chat_delete_last">项目至少需要一个聊天</string>
     <string name="ws_subagents_title">子代理</string>
     <string name="ws_subagent_done">已完成</string>
+    <string name="ws_subagent_prompt">提示词</string>
     <string name="ws_subagent_thinking">思考</string>
     <string name="ws_subagent_reply">回复</string>
-    <string name="ws_subagent_transcript_empty">暂无思考或回复消息——该子代理目前只执行了工具。</string>
+    <string name="ws_subagent_transcript_empty">暂无消息——子代理运行时记录会显示在这里。</string>
     <string name="ws_activity_detail_copy">复制</string>
     <string name="ws_agy_setup_title">设置 Antigravity</string>
     <string name="ws_agy_connect_google">连接您的 Google 账号</string>

@@ -7740,7 +7740,7 @@ private fun SubagentMonitor(
     }
 }
 
-/** Scrollable thinking/reply transcript of one subagent, opened from the monitor. */
+/** Scrollable prompt/thinking/reply transcript of one subagent, opened from the monitor. */
 @Composable
 private fun SubagentTranscriptDialog(
     subagent: SubagentStatus,
@@ -7793,6 +7793,7 @@ private fun SubagentTranscriptDialog(
                         Text(
                             text = when (entry.title) {
                                 "Reply" -> stringResource(R.string.ws_subagent_reply)
+                                "Prompt" -> stringResource(R.string.ws_subagent_prompt)
                                 else -> stringResource(R.string.ws_subagent_thinking)
                             },
                             fontSize = 11.sp,

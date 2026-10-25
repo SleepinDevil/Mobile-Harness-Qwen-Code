@@ -664,6 +664,13 @@ class QwenRuntimeBridge(
                     state.lastUsageTokens = delta.usageTokens
                     eventBus.emit(RuntimeEvent.SubagentUsage(sessionId, meta.callId, delta.usageTokens))
                 }
+                delta.entries.forEach { entry ->
+                    when (entry.kind) {
+                        "Prompt" -> eventBus.emit(RuntimeEvent.SubagentPrompt(sessionId, meta.callId, entry.text))
+                        "Thinking" -> eventBus.emit(RuntimeEvent.SubagentThinking(sessionId, meta.callId, entry.text))
+                        else -> eventBus.emit(RuntimeEvent.SubagentReply(sessionId, meta.callId, entry.text))
+                    }
+                }
                 delta.activity?.let {
                     eventBus.emit(
                         RuntimeEvent.SubagentActivity(
@@ -1294,13 +1301,23 @@ internal fun qwenSubagentMetaFiles(projectsDir: File, notBeforeMillis: Long): Li
     }.orEmpty().filter { it.lastModified() >= notBeforeMillis - SUBAGENT_POLL_RECENTNESS_GRACE_MS }
 
 /** One subagent-transcript poll tick: [newOffset] plus whatever the new lines carry. */
-internal data class QwenSubagentDelta(val newOffset: Long, val usageTokens: Int, val activity: String?)
+internal data class QwenSubagentDelta(
+    val newOffset: Long,
+    val usageTokens: Int,
+    val activity: String?,
+    val entries: List<QwenSubagentEntry> = emptyList(),
+)
+
+/** A complete transcript record classified for the per-subagent transcript view. */
+internal data class QwenSubagentEntry(val kind: String, val text: String)
 
 /**
- * Incrementally reads the tail of a detached subagent's append-only transcript.
- * Reports the newest round's context accounting (`usageMetadata.totalTokenCount`)
- * and a one-line label for the last new record (tool call or reply preview).
- * [offset] is the byte offset from the previous tick; a truncation restarts at 0.
+ * Incrementally reads a detached subagent's append-only transcript (one complete
+ * JSON record per line: prompt, thinking, tool calls, replies). Reports the next
+ * byte offset, the latest cumulative token count, a one-line activity label, and
+ * every complete record since [offset] classified into prompt/thinking/reply
+ * entries. A trailing half-written line (the CLI is mid-append) is held back for
+ * the next tick; a truncation restarts at 0.
  */
 internal fun qwenSubagentTranscriptDelta(transcript: File, offset: Long): QwenSubagentDelta? {
     val length = transcript.length()
@@ -1326,6 +1343,7 @@ internal fun qwenSubagentTranscriptDelta(transcript: File, offset: Long): QwenSu
     if (cut < 0) return null
     var usageTokens = 0
     var activity: String? = null
+    val entries = mutableListOf<QwenSubagentEntry>()
     String(bytes, 0, cut + 1, Charsets.UTF_8).lineSequence().forEach { raw ->
         if (raw.isBlank()) return@forEach
         val record = runCatching { JSONObject(raw) }.getOrNull() ?: return@forEach
@@ -1334,26 +1352,33 @@ internal fun qwenSubagentTranscriptDelta(transcript: File, offset: Long): QwenSu
             ?.optInt("totalTokenCount")
             ?.takeIf { it > 0 }
             ?.let { usageTokens = it }
-        qwenSubagentRecordLabel(record)?.let { activity = it }
+        val parts = record.optJSONObject("message")?.optJSONArray("parts") ?: return@forEach
+        for (index in 0 until parts.length()) {
+            val part = parts.optJSONObject(index) ?: continue
+            part.optJSONObject("functionCall")?.optString("name")?.takeIf(String::isNotBlank)?.let {
+                activity = "Using $it"
+                return@forEach
+            }
+            part.optString("text").takeIf(String::isNotBlank)?.let { text ->
+                activity = qwenSubagentPreview(text)
+                if (!part.optBoolean("functionResponse")) {
+                    entries +=
+                        when {
+                            part.optBoolean("thought") -> QwenSubagentEntry("Thinking", text)
+                            record.optString("type") == "user" -> QwenSubagentEntry("Prompt", text)
+                            else -> QwenSubagentEntry("Reply", text)
+                        }
+                }
+            }
+        }
     }
-    return QwenSubagentDelta(start + cut + 1L, usageTokens, activity)
+    return QwenSubagentDelta(start + cut + 1L, usageTokens, activity, entries)
 }
 
-/** Activity label for one transcript record: tool call name or text preview. */
-private fun qwenSubagentRecordLabel(record: JSONObject): String? {
-    val parts = record.optJSONObject("message")?.optJSONArray("parts") ?: return null
-    for (index in 0 until parts.length()) {
-        val part = parts.optJSONObject(index) ?: continue
-        part.optJSONObject("functionCall")?.optString("name")?.takeIf(String::isNotBlank)?.let {
-            return "Using $it"
-        }
-        part.optString("text").takeIf(String::isNotBlank)?.let { text ->
-            val preview = text.replace(Regex("\\s+"), " ").trim()
-            return if (preview.length > 70) preview.take(70) + "…" else preview
-        }
+private fun qwenSubagentPreview(text: String): String =
+    text.replace(Regex("\\s+"), " ").trim().let {
+        if (it.length > 70) it.take(70).trimEnd() + "…" else it
     }
-    return null
-}
 
 private fun qwenSubagentDescription(description: String, type: String): String {
     val ask = description.ifBlank { "Subagent" }

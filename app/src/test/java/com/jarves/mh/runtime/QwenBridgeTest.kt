@@ -360,6 +360,7 @@ class QwenBridgeTest {
         assertNotNull(first)
         assertEquals(0, first!!.usageTokens)
         assertEquals("Research X and report the answer.", first.activity)
+        assertEquals(listOf("Prompt" to "Research X and report the answer."), first.entries.map { it.kind to it.text })
         assertNull(qwenSubagentTranscriptDelta(transcript, first.newOffset))
         transcript.appendText(
             """{"uuid":"u2","type":"assistant","agentId":"Explore-call_1","isSidechain":true,"message":{"role":"model","parts":[{"text":"Research complete: X is 42."}]},"usageMetadata":{"promptTokenCount":450,"candidatesTokenCount":40,"totalTokenCount":490}}""" + "\n",
@@ -374,6 +375,14 @@ class QwenBridgeTest {
         transcript.appendText("\"}]}}\n")
         val third = qwenSubagentTranscriptDelta(transcript, second.newOffset)
         assertEquals("half", third!!.activity)
+        transcript.appendText(
+            """{"uuid":"u4","type":"assistant","message":{"role":"model","parts":[{"text":"Let me check.","thought":true},{"text":"Final answer."}]}}""" + "\n",
+        )
+        val fourth = qwenSubagentTranscriptDelta(transcript, third.newOffset)
+        assertEquals(
+            listOf("Thinking" to "Let me check.", "Reply" to "Final answer."),
+            fourth?.entries?.map { it.kind to it.text },
+        )
         assertEquals(490, qwenSubagentTranscriptDelta(transcript, 0L)?.usageTokens)
     }
 

@@ -371,6 +371,11 @@ sealed interface RuntimeEvent {
         val callId: String,
         val text: String,
     ) : RuntimeEvent
+    data class SubagentPrompt(
+        override val sessionId: String,
+        val callId: String,
+        val text: String,
+    ) : RuntimeEvent
     data class SubagentFinished(override val sessionId: String, val callId: String) : RuntimeEvent
     data class SubagentUsage(
         override val sessionId: String,

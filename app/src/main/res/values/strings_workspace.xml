@@ -18,9 +18,10 @@
     <string name="ws_chat_delete_last">A project needs at least one chat</string>
     <string name="ws_subagents_title">Subagents</string>
     <string name="ws_subagent_done">Done</string>
+    <string name="ws_subagent_prompt">Prompt</string>
     <string name="ws_subagent_thinking">Thinking</string>
     <string name="ws_subagent_reply">Reply</string>
-    <string name="ws_subagent_transcript_empty">No thinking or reply messages yet - this subagent has only run tools so far.</string>
+    <string name="ws_subagent_transcript_empty">No messages yet - the subagent transcript appears here while it runs.</string>
     <string name="ws_activity_detail_copy">Copy</string>
     <string name="ws_agy_setup_title">Set up Antigravity</string>
     <string name="ws_agy_connect_google">Connect your Google account</string>

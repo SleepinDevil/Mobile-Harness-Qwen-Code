@@ -5525,6 +5525,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         },
                     )
                 }
+                is RuntimeEvent.SubagentPrompt -> appendSubagentEntry(current, event.callId, "Prompt", event.text)
                 is RuntimeEvent.SubagentThinking -> appendSubagentEntry(current, event.callId, "Thinking", event.text)
                 is RuntimeEvent.SubagentReply -> appendSubagentEntry(current, event.callId, "Reply", event.text)
                 is RuntimeEvent.SubagentFinished -> current.copy(
