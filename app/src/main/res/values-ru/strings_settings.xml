@@ -146,4 +146,28 @@
     <string name="st_harness_log_failed">Сбой</string>
     <string name="st_harness_log_failed_exit">Сбой · код %1$d</string>
     <string name="st_harness_log_ok">Выполнено</string>
+    <string name="st_effort_default">По умолчанию</string>
+    <string name="st_effort_xhigh">XHigh</string>
+    <string name="st_effort_max">Max</string>
+    <string name="st_efforts_none">Нет</string>
+    <string name="st_efforts_simple">Off / Low / High</string>
+    <string name="st_efforts_standard">Off / Low / Medium / High</string>
+    <string name="st_efforts_extended">Off / Low / Medium / High / Max</string>
+    <string name="st_harness_qwen_effort_support">Насколько модель размышляет перед ответом. По умолчанию — выбор провайдера.</string>
+    <string name="st_harness_qwen_max_tool_calls">Макс. вызовов инструментов за запуск</string>
+    <string name="st_harness_qwen_max_tool_calls_support">Общий лимит вызовов; при достижении запуск останавливается. 0 = без ограничений.</string>
+    <string name="st_harness_qwen_shell_timeout">Тайм-аут shell-команд (мс)</string>
+    <string name="st_harness_qwen_shell_timeout_support">Фоновые команды прерываются по истечении. 0 = значение CLI (120 с).</string>
+    <string name="st_harness_claude_bash_timeout">Лимит тайм-аута Bash (мс)</string>
+    <string name="st_harness_claude_bash_timeout_support">Увеличивает максимально допустимый тайм-аут команд Bash. 0 = значение CLI.</string>
+    <string name="st_harness_claude_thinking">Макс. токенов размышления</string>
+    <string name="st_harness_claude_thinking_support">Бюджет расширенного размышления на запрос. 0 = значение модели.</string>
+    <string name="st_harness_claude_output">Макс. токенов вывода за ход</string>
+    <string name="st_harness_claude_output_support">Ограничивает длину вывода за ход. 0 = значение модели.</string>
+    <string name="st_harness_dsh_context">Контекстное окно модели (токены)</string>
+    <string name="st_harness_dsh_context_support">Заявленная ёмкость выбранной модели. Только пользовательские API-маршруты; 0 = значение адаптера (262144).</string>
+    <string name="st_harness_dsh_max_output">Макс. токенов вывода</string>
+    <string name="st_harness_dsh_max_output_support">Лимит вывода на запрос. Только пользовательские API-маршруты; 0 = значение адаптера (32768).</string>
+    <string name="st_harness_dsh_efforts">Уровни размышления</string>
+    <string name="st_harness_dsh_efforts_support">Уровни, доступные модели. Только пользовательские API-маршруты; Нет — режим рассуждения не заявляется.</string>
 </resources>

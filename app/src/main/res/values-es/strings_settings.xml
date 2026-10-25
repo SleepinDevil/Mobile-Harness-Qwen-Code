@@ -146,4 +146,28 @@
     <string name="st_harness_log_failed">Error</string>
     <string name="st_harness_log_failed_exit">Error · salida %1$d</string>
     <string name="st_harness_log_ok">Completado</string>
+    <string name="st_effort_default">Predeterminado</string>
+    <string name="st_effort_xhigh">XHigh</string>
+    <string name="st_effort_max">Max</string>
+    <string name="st_efforts_none">Ninguno</string>
+    <string name="st_efforts_simple">Off / Low / High</string>
+    <string name="st_efforts_standard">Off / Low / Medium / High</string>
+    <string name="st_efforts_extended">Off / Low / Medium / High / Max</string>
+    <string name="st_harness_qwen_effort_support">Cuánto piensa el modelo antes de responder. Predeterminado usa la opción del proveedor.</string>
+    <string name="st_harness_qwen_max_tool_calls">Máx. llamadas a herramientas por ejecución</string>
+    <string name="st_harness_qwen_max_tool_calls_support">Presupuesto acumulado de llamadas; la ejecución se detiene al alcanzarlo. 0 = ilimitado.</string>
+    <string name="st_harness_qwen_shell_timeout">Tiempo máximo de shell (ms)</string>
+    <string name="st_harness_qwen_shell_timeout_support">Los comandos en primer plano se cancelan al expirar. 0 = valor del CLI (120 s).</string>
+    <string name="st_harness_claude_bash_timeout">Límite de tiempo de Bash (ms)</string>
+    <string name="st_harness_claude_bash_timeout_support">Eleva el tiempo máximo permitido para los comandos Bash. 0 = valor del CLI.</string>
+    <string name="st_harness_claude_thinking">Máx. tokens de razonamiento</string>
+    <string name="st_harness_claude_thinking_support">Presupuesto de razonamiento ampliado por solicitud. 0 = valor del modelo.</string>
+    <string name="st_harness_claude_output">Máx. tokens de salida por turno</string>
+    <string name="st_harness_claude_output_support">Limita la longitud de salida por turno. 0 = valor del modelo.</string>
+    <string name="st_harness_dsh_context">Ventana de contexto del modelo (tokens)</string>
+    <string name="st_harness_dsh_context_support">Capacidad declarada del modelo seleccionado. Solo rutas API personalizadas; 0 = valor del adaptador (262144).</string>
+    <string name="st_harness_dsh_max_output">Máx. tokens de salida</string>
+    <string name="st_harness_dsh_max_output_support">Límite de salida por solicitud. Solo rutas API personalizadas; 0 = valor del adaptador (32768).</string>
+    <string name="st_harness_dsh_efforts">Niveles de razonamiento</string>
+    <string name="st_harness_dsh_efforts_support">Niveles ofrecidos para el modelo. Solo rutas API personalizadas; Ninguno no declara razonamiento.</string>
 </resources>

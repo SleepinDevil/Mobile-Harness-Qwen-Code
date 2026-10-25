@@ -146,4 +146,28 @@
     <string name="st_harness_log_failed">فشل</string>
     <string name="st_harness_log_failed_exit">فشل · الخروج %1$d</string>
     <string name="st_harness_log_ok">اكتمل</string>
+    <string name="st_effort_default">افتراضي</string>
+    <string name="st_effort_xhigh">XHigh</string>
+    <string name="st_effort_max">Max</string>
+    <string name="st_efforts_none">بدون</string>
+    <string name="st_efforts_simple">Off / Low / High</string>
+    <string name="st_efforts_standard">Off / Low / Medium / High</string>
+    <string name="st_efforts_extended">Off / Low / Medium / High / Max</string>
+    <string name="st_harness_qwen_effort_support">مقدار تفكير النموذج قبل الإجابة. الافتراضي يترك الخيار للمزوّد.</string>
+    <string name="st_harness_qwen_max_tool_calls">أقصى استدعاءات أدوات لكل تشغيل</string>
+    <string name="st_harness_qwen_max_tool_calls_support">ميزانية تراكمية للاستدعاءات؛ يتوقف التشغيل عند بلوغها. 0 = بلا حد.</string>
+    <string name="st_harness_qwen_shell_timeout">مهلة أوامر Shell (ملي ثانية)</string>
+    <string name="st_harness_qwen_shell_timeout_support">تُلغى الأوامر الأمامية بعد انتهاء هذه المهلة. 0 = افتراضي CLI (120 ث).</string>
+    <string name="st_harness_claude_bash_timeout">حد مهلة Bash (ملي ثانية)</string>
+    <string name="st_harness_claude_bash_timeout_support">يرفع الحد الأقصى المسموح لمهلة أوامر Bash. 0 = افتراضي CLI.</string>
+    <string name="st_harness_claude_thinking">أقصى رموز تفكير</string>
+    <string name="st_harness_claude_thinking_support">ميزانية التفكير الموسّع لكل طلب. 0 = افتراضي النموذج.</string>
+    <string name="st_harness_claude_output">أقصى رموز إخراج لكل دورة</string>
+    <string name="st_harness_claude_output_support">يحدّ طول الإخراج لكل دورة. 0 = افتراضي النموذج.</string>
+    <string name="st_harness_dsh_context">نافذة سياق النموذج (رموز)</string>
+    <string name="st_harness_dsh_context_support">السعة المعلنة للنموذج المحدد. لمسارات API المخصصة فقط؛ 0 = افتراضي المحوّل (262144).</string>
+    <string name="st_harness_dsh_max_output">أقصى رموز الإخراج</string>
+    <string name="st_harness_dsh_max_output_support">حد الإخراج لكل طلب. لمسارات API المخصصة فقط؛ 0 = افتراضي المحوّل (32768).</string>
+    <string name="st_harness_dsh_efforts">مستويات التفكير</string>
+    <string name="st_harness_dsh_efforts_support">المستويات المتاحة للنموذج. لمسارات API المخصصة فقط؛ بدون يعني عدم إعلان التفكير.</string>
 </resources>

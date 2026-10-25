@@ -146,4 +146,28 @@
     <string name="st_harness_log_failed">Failed</string>
     <string name="st_harness_log_failed_exit">Failed · exit %1$d</string>
     <string name="st_harness_log_ok">Completed</string>
+    <string name="st_effort_default">Default</string>
+    <string name="st_effort_xhigh">XHigh</string>
+    <string name="st_effort_max">Max</string>
+    <string name="st_efforts_none">None</string>
+    <string name="st_efforts_simple">Off / Low / High</string>
+    <string name="st_efforts_standard">Off / Low / Medium / High</string>
+    <string name="st_efforts_extended">Off / Low / Medium / High / Max</string>
+    <string name="st_harness_qwen_effort_support">How much the model thinks before answering. Default keeps the provider choice.</string>
+    <string name="st_harness_qwen_max_tool_calls">Max tool calls per run</string>
+    <string name="st_harness_qwen_max_tool_calls_support">Cumulative tool-call budget; the run stops when reached. 0 = unlimited.</string>
+    <string name="st_harness_qwen_shell_timeout">Shell command timeout (ms)</string>
+    <string name="st_harness_qwen_shell_timeout_support">Foreground commands abort after this delay. 0 = CLI default (120 s).</string>
+    <string name="st_harness_claude_bash_timeout">Bash timeout limit (ms)</string>
+    <string name="st_harness_claude_bash_timeout_support">Raises the maximum timeout allowed for Bash commands. 0 = CLI default.</string>
+    <string name="st_harness_claude_thinking">Max thinking tokens</string>
+    <string name="st_harness_claude_thinking_support">Extended thinking budget per request. 0 = model default.</string>
+    <string name="st_harness_claude_output">Max output tokens per turn</string>
+    <string name="st_harness_claude_output_support">Caps output length per turn. 0 = model default.</string>
+    <string name="st_harness_dsh_context">Model context window (tokens)</string>
+    <string name="st_harness_dsh_context_support">Declared capacity for the selected model. Custom API routes only; 0 = adapter default (262144).</string>
+    <string name="st_harness_dsh_max_output">Max output tokens</string>
+    <string name="st_harness_dsh_max_output_support">Per-request output cap. Custom API routes only; 0 = adapter default (32768).</string>
+    <string name="st_harness_dsh_efforts">Thinking levels</string>
+    <string name="st_harness_dsh_efforts_support">Effort levels offered for the model. Custom API routes only; None declares no reasoning.</string>
 </resources>

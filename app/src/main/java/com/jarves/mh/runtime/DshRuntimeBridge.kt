@@ -45,6 +45,9 @@ import org.json.JSONObject
 class DshRuntimeBridge(
     private val context: Context,
     private val secretFor: (ProviderProfile) -> String?,
+    private val contextWindowTokens: () -> Int = { 0 },
+    private val maxOutputTokens: () -> Int = { 0 },
+    private val reasoningEffortsPreset: () -> Int = { 0 },
 ) : RuntimeBridge {
     private val installer = RuntimeInstaller(context)
     private val runtimeLogs = RuntimeLogStore(File(context.filesDir, "runtime-logs"))
@@ -481,21 +484,13 @@ class DshRuntimeBridge(
 
     private fun writeDshSettings(rootfs: File, route: DshRoute, provider: ProviderProfile) {
         val home = File(rootfs, DSH_HOME_GUEST_PATH.removePrefix("/")).apply { mkdirs() }
-        val body = buildString {
-            appendLine("agent-default-model:")
-            appendLine("  provider: ${route.name}")
-            appendLine("  model: ${yamlQuote(provider.model.ifBlank { route.defaultModel })}")
-            if (route.custom != null) {
-                appendLine("llm-pi-ai:")
-                appendLine("  providers:")
-                appendLine("    ${route.name}:")
-                appendLine("      apiKeyEnv: ${route.keyEnv}")
-                appendLine("      api: ${route.custom.api}")
-                appendLine("      baseURL: ${yamlQuote(route.custom.baseUrl)}")
-                appendLine("      models:")
-                appendLine("        - id: ${yamlQuote(provider.model.ifBlank { route.defaultModel })}")
-            }
-        }
+        val body = dshSettingsYaml(
+            route = route,
+            model = provider.model.ifBlank { route.defaultModel },
+            contextWindowTokens = contextWindowTokens(),
+            maxOutputTokens = maxOutputTokens(),
+            reasoningEffortsPreset = reasoningEffortsPreset(),
+        )
         File(home, "settings.yaml").writeText(body)
     }
 
@@ -725,6 +720,51 @@ class DshRuntimeBridge(
 
 private data class DshSdkRunResult(val completed: Boolean, val failure: String)
 
+/**
+ * Builds `$DSH_HOME/settings.yaml`. The per-model `contextWindow`/`maxTokens`/
+ * `reasoningEfforts` fields only exist on hand-declared (`route.custom`) routes;
+ * official catalog models inherit their capabilities from the installed catalog.
+ * Zero capacities omit the field (adapter defaults 262144/32768 apply) and
+ * preset 0 omits `reasoningEfforts`, which declares a non-reasoning model.
+ */
+internal fun dshSettingsYaml(
+    route: DshRoute,
+    model: String,
+    contextWindowTokens: Int,
+    maxOutputTokens: Int,
+    reasoningEffortsPreset: Int,
+): String = buildString {
+    appendLine("agent-default-model:")
+    appendLine("  provider: ${route.name}")
+    appendLine("  model: '${model.replace("'", "''")}'")
+    if (route.custom != null) {
+        appendLine("llm-pi-ai:")
+        appendLine("  providers:")
+        appendLine("    ${route.name}:")
+        appendLine("      apiKeyEnv: ${route.keyEnv}")
+        appendLine("      api: ${route.custom.api}")
+        appendLine("      baseURL: '${route.custom.baseUrl.replace("'", "''")}'")
+        appendLine("      models:")
+        appendLine("        - id: '${model.replace("'", "''")}'")
+        if (contextWindowTokens > 0) appendLine("          contextWindow: $contextWindowTokens")
+        if (maxOutputTokens > 0) appendLine("          maxTokens: $maxOutputTokens")
+        DSH_REASONING_EFFORT_PRESETS[reasoningEffortsPreset]?.let { levels ->
+            appendLine("          reasoningEfforts:")
+            // Keys are selector levels, values the wire spelling; only `off`
+            // may stay empty (offered, sends nothing).
+            levels.forEach { level ->
+                if (level == "off") appendLine("            off:") else appendLine("            $level: $level")
+            }
+        }
+    }
+}
+
+/** Thinking-level offers for the custom-route model, keyed by picker index. */
+internal val DSH_REASONING_EFFORT_PRESETS = mapOf(
+    1 to listOf("off", "low", "high"),
+    2 to listOf("off", "low", "medium", "high"),
+    3 to listOf("off", "low", "medium", "high", "max"),
+)
 /** dsh provider route resolved from our saved provider profile. */
 internal data class DshRoute(
     val name: String,

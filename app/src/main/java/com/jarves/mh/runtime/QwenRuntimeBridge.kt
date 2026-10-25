@@ -48,6 +48,9 @@ class QwenRuntimeBridge(
     private val autoCompactPercent: () -> Int = { DEFAULT_AUTO_COMPACT_PERCENT },
     private val subagentsEnabled: () -> Boolean = { DEFAULT_SUBAGENTS_ENABLED },
     private val maxConcurrentSubagents: () -> Int = { DEFAULT_MAX_CONCURRENT_SUBAGENTS },
+    private val reasoningEffort: () -> Int = { 0 },
+    private val maxToolCalls: () -> Int = { 0 },
+    private val shellTimeoutMs: () -> Int = { 0 },
 ) : RuntimeBridge {
     private val installer = RuntimeInstaller(context)
     private val runtimeLogs = RuntimeLogStore(File(context.filesDir, "runtime-logs"))
@@ -876,6 +879,9 @@ class QwenRuntimeBridge(
             contextWindowTokens = contextWindowTokens(),
             autoCompactPercent = autoCompactPercent(),
             subagentsEnabled = subagentsEnabled(),
+            reasoningEffort = reasoningEffort(),
+            maxToolCalls = maxToolCalls(),
+            shellTimeoutMs = shellTimeoutMs(),
         )
         File(home, "settings.json").writeText(settings.toString(2))
     }
@@ -1177,6 +1183,9 @@ internal fun qwenSettingsJson(
     contextWindowTokens: Int,
     autoCompactPercent: Int,
     subagentsEnabled: Boolean,
+    reasoningEffort: Int = 0,
+    maxToolCalls: Int = 0,
+    shellTimeoutMs: Int = 0,
 ): JSONObject {
     val providerEntry = JSONObject()
         .put("id", route.model)
@@ -1192,6 +1201,11 @@ internal fun qwenSettingsJson(
     val modelSettings = JSONObject()
         .put("name", route.model)
         .put("maxSessionTurns", maxSessionTurns)
+    // Effort index 0 omits the key so the provider default applies; 1..n select
+    // the canonical wire names below. maxToolCalls 0 also omits: Qwen's own
+    // default is no cumulative tool-call budget.
+    QWEN_REASONING_EFFORTS.getOrNull(reasoningEffort - 1)?.let { modelSettings.put("reasoningEffort", it) }
+    if (maxToolCalls > 0) modelSettings.put("maxToolCalls", maxToolCalls)
     val toolsSettings = JSONObject().put("approvalMode", "yolo")
     if (subagentsEnabled) {
         // Subagents stay flat: nested delegation multiplies model calls and was
@@ -1201,6 +1215,11 @@ internal fun qwenSettingsJson(
         // tools.disabled unregisters the tools, so they are invisible to the
         // model and unreachable even through the tool_search/tool_call bridge.
         toolsSettings.put("disabled", JSONArray(QWEN_SUBAGENT_CONTROL_TOOLS))
+    }
+    // 0 keeps the CLI default (120 s foreground shell timeout); the explicit
+    // timeout-disabled spelling (0 in tools.shell.defaultTimeoutMs) stays hidden.
+    if (shellTimeoutMs > 0) {
+        toolsSettings.put("shell", JSONObject().put("defaultTimeoutMs", shellTimeoutMs))
     }
     return JSONObject()
         .put(
@@ -1223,6 +1242,9 @@ internal fun qwenSettingsJson(
 
 /** Subagent control-plane tools removed when subagents are turned off. */
 internal val QWEN_SUBAGENT_CONTROL_TOOLS = listOf("agent", "list_agents", "send_message", "task_stop")
+
+/** Qwen Code `model.reasoningEffort` wire values, ordered by Settings picker index (1-based). */
+internal val QWEN_REASONING_EFFORTS = listOf("low", "medium", "high", "xhigh", "max")
 
 /** Launch environment; caps concurrent background subagents when they are allowed. */
 internal fun qwenLaunchEnvironment(

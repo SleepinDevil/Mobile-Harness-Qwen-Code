@@ -398,3 +398,58 @@ class AgentProviderPresetTest {
         assertEquals(AgentKind.QWEN_CODE, AgentKind.fromStored("qwen-code"))
     }
 }
+class DshSettingsYamlTest {
+    @Test
+    fun officialRouteOmitsLlmPiAiBlock() {
+        val yaml = dshSettingsYaml(
+            route = DshRoute(name = "deepseek", keyEnv = "DEEPSEEK_API_KEY", defaultModel = "deepseek-chat"),
+            model = "deepseek-chat",
+            contextWindowTokens = 131_072,
+            maxOutputTokens = 8_192,
+            reasoningEffortsPreset = 2,
+        )
+        assertFalse(yaml.contains("llm-pi-ai"))
+        assertTrue(yaml.contains("  provider: deepseek"))
+    }
+
+    @Test
+    fun customRouteDeclaresModelCapsAndEfforts() {
+        val yaml = dshSettingsYaml(
+            route = DshRoute(
+                name = "custom",
+                keyEnv = "CUSTOM_API_KEY",
+                defaultModel = "glm-4.6",
+                custom = DshCustomRoute(api = "openai-completions", baseUrl = "http://127.0.0.1:8787/v1"),
+            ),
+            model = "glm-4.6",
+            contextWindowTokens = 200_000,
+            maxOutputTokens = 16_384,
+            reasoningEffortsPreset = 3,
+        )
+        assertTrue(yaml.contains("          contextWindow: 200000"))
+        assertTrue(yaml.contains("          maxTokens: 16384"))
+        assertTrue(yaml.contains("          reasoningEfforts:"))
+        assertTrue(yaml.contains("            off:\n"))
+        assertTrue(yaml.contains("            medium: medium"))
+        assertTrue(yaml.contains("            max: max"))
+    }
+
+    @Test
+    fun customRouteOmitsUnsetCapsAndPreset() {
+        val yaml = dshSettingsYaml(
+            route = DshRoute(
+                name = "custom",
+                keyEnv = "CUSTOM_API_KEY",
+                defaultModel = "glm-4.6",
+                custom = DshCustomRoute(api = "openai-completions", baseUrl = "http://127.0.0.1:8787/v1"),
+            ),
+            model = "glm-4.6",
+            contextWindowTokens = 0,
+            maxOutputTokens = 0,
+            reasoningEffortsPreset = 0,
+        )
+        assertFalse(yaml.contains("contextWindow:"))
+        assertFalse(yaml.contains("maxTokens:"))
+        assertFalse(yaml.contains("reasoningEfforts:"))
+    }
+}

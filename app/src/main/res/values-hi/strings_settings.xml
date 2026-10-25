@@ -146,4 +146,28 @@
     <string name="st_harness_log_failed">विफल</string>
     <string name="st_harness_log_failed_exit">विफल · एग्ज़िट %1$d</string>
     <string name="st_harness_log_ok">पूर्ण</string>
+    <string name="st_effort_default">डिफ़ॉल्ट</string>
+    <string name="st_effort_xhigh">XHigh</string>
+    <string name="st_effort_max">Max</string>
+    <string name="st_efforts_none">कोई नहीं</string>
+    <string name="st_efforts_simple">Off / Low / High</string>
+    <string name="st_efforts_standard">Off / Low / Medium / High</string>
+    <string name="st_efforts_extended">Off / Low / Medium / High / Max</string>
+    <string name="st_harness_qwen_effort_support">मॉडल उत्तर देने से पहले कितना सोचता है। डिफ़ॉल्ट प्रदाता का विकल्प रखता है।</string>
+    <string name="st_harness_qwen_max_tool_calls">प्रति रन अधिकतम टूल कॉल</string>
+    <string name="st_harness_qwen_max_tool_calls_support">कुल टूल-कॉल बजट; पहुँचने पर रन रुक जाता है। 0 = असीमित।</string>
+    <string name="st_harness_qwen_shell_timeout">शेल कमांड टाइमआउट (ms)</string>
+    <string name="st_harness_qwen_shell_timeout_support">समाप्ति पर फ़ोर-ग्राउंड कमांड रद्द हो जाते हैं। 0 = CLI डिफ़ॉल्ट (120 से.)।</string>
+    <string name="st_harness_claude_bash_timeout">Bash टाइमआउट सीमा (ms)</string>
+    <string name="st_harness_claude_bash_timeout_support">Bash कमांड की अधिकतम अनुमत टाइमआउट बढ़ाएँ। 0 = CLI डिफ़ॉल्ट।</string>
+    <string name="st_harness_claude_thinking">अधिकतम थिंकिंग टोकन</string>
+    <string name="st_harness_claude_thinking_support">प्रति अनुरोध विस्तृत-चिंतन बजट। 0 = मॉडल डिफ़ॉल्ट।</string>
+    <string name="st_harness_claude_output">प्रति टर्न अधिकतम आउटपुट टोकन</string>
+    <string name="st_harness_claude_output_support">प्रति टर्न आउटपुट लंबाई सीमित करें। 0 = मॉडल डिफ़ॉल्ट।</string>
+    <string name="st_harness_dsh_context">मॉडल संदर्भ विंडो (टोकन)</string>
+    <string name="st_harness_dsh_context_support">चुने मॉडल की घोषित क्षमता। केवल कस्टम API रूट; 0 = एडॉप्टर डिफ़ॉल्ट (262144)।</string>
+    <string name="st_harness_dsh_max_output">अधिकतम आउटपुट टोकन</string>
+    <string name="st_harness_dsh_max_output_support">प्रति अनुरोध आउटपुट सीमा। केवल कस्टम API रूट; 0 = एडॉप्टर डिफ़ॉल्ट (32768)।</string>
+    <string name="st_harness_dsh_efforts">थिंकिंग स्तर</string>
+    <string name="st_harness_dsh_efforts_support">मॉडल द्वारा प्रस्तावित स्तर। केवल कस्टम API रूट; कोई नहीं = रीज़निंग की घोषणा नहीं।</string>
 </resources>

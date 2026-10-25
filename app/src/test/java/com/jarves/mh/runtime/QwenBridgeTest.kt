@@ -401,5 +401,49 @@ class QwenBridgeTest {
         baseUrl = "https://api.example.com/v1",
         model = "glm-5.3",
     )
+    @Test
+    fun settingsJsonOmitsHarnessTuningWhenUnset() {
+        val settings = qwenSettingsJson(
+            route = qwenTestRoute(),
+            maxSessionTurns = 25,
+            contextWindowTokens = 0,
+            autoCompactPercent = 85,
+            subagentsEnabled = false,
+        )
+        val model = settings.getJSONObject("model")
+        assertFalse(model.has("reasoningEffort"))
+        assertFalse(model.has("maxToolCalls"))
+        assertFalse(settings.getJSONObject("tools").has("shell"))
+    }
+
+    @Test
+    fun settingsJsonMapsEffortPickerIndexToWireName() {
+        fun effortAt(index: Int) = qwenSettingsJson(
+            route = qwenTestRoute(),
+            maxSessionTurns = 25,
+            contextWindowTokens = 0,
+            autoCompactPercent = 85,
+            subagentsEnabled = false,
+            reasoningEffort = index,
+        ).getJSONObject("model").getString("reasoningEffort")
+        assertEquals("low", effortAt(1))
+        assertEquals("xhigh", effortAt(4))
+        assertEquals("max", effortAt(5))
+    }
+
+    @Test
+    fun settingsJsonEmitsToolCallBudgetAndShellTimeout() {
+        val settings = qwenSettingsJson(
+            route = qwenTestRoute(),
+            maxSessionTurns = 25,
+            contextWindowTokens = 0,
+            autoCompactPercent = 85,
+            subagentsEnabled = false,
+            maxToolCalls = 40,
+            shellTimeoutMs = 300_000,
+        )
+        assertEquals(40, settings.getJSONObject("model").getInt("maxToolCalls"))
+        assertEquals(300_000, settings.getJSONObject("tools").getJSONObject("shell").getInt("defaultTimeoutMs"))
+    }
 }
 

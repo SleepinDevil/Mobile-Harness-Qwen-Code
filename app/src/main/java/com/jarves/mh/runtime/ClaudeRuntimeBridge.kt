@@ -72,11 +72,24 @@ class ClaudeRuntimeBridge(
     private val context: Context,
     private val secretFor: (ProviderProfile) -> String?,
     private val maxTurns: () -> Int = { DEFAULT_MAX_TURNS },
+    private val bashMaxTimeoutMs: () -> Int = { 0 },
+    private val maxThinkingTokens: () -> Int = { 0 },
+    private val maxOutputTokens: () -> Int = { 0 },
 ) : RuntimeBridge {
     private val installer = RuntimeInstaller(context)
     private val runtimeLogs = RuntimeLogStore(File(context.filesDir, "runtime-logs"))
     private val eventBus = MutableSharedFlow<RuntimeEvent>(extraBufferCapacity = 64)
     override val events: Flow<RuntimeEvent> = eventBus
+    /**
+     * Per-session Claude Code tuning merged over the launch environment. 0
+     * leaves each variable unset so the CLI default applies; DISABLE_AUTOUPDATER
+     * is handled by [RuntimeLaunchConfigBuilder] for every launch.
+     */
+    private fun harnessEnvironment(): Map<String, String> = buildMap {
+        bashMaxTimeoutMs().takeIf { it > 0 }?.let { put("BASH_MAX_TIMEOUT_MS", it.toString()) }
+        maxThinkingTokens().takeIf { it > 0 }?.let { put("MAX_THINKING_TOKENS", it.toString()) }
+        maxOutputTokens().takeIf { it > 0 }?.let { put("CLAUDE_CODE_MAX_OUTPUT_TOKENS", it.toString()) }
+    }
     private val pending = ConcurrentHashMap<String, PendingPermission>()
     private val toolNames = ConcurrentHashMap<String, String>()
     private val seenToolCalls = ConcurrentHashMap.newKeySet<String>()
@@ -191,7 +204,7 @@ class ClaudeRuntimeBridge(
                 installed.proot,
                 installed.rootfs,
                 workspace,
-                launch.environment,
+                launch.environment + harnessEnvironment(),
                 command,
                 guestWorkspacePath = guestWorkspacePath,
                 outputFile = sessionLog,

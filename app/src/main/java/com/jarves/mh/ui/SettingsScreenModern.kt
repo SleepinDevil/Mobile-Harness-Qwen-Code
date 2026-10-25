@@ -58,6 +58,9 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -161,6 +164,15 @@ fun SettingsScreen(
     onSetHarnessQwenAutoCompactPercent: (Int) -> Unit = {},
     onSetHarnessQwenSubagents: (Boolean) -> Unit = {},
     onSetHarnessQwenMaxSubagents: (Int) -> Unit = {},
+    onSetHarnessQwenReasoningEffort: (Int) -> Unit = {},
+    onSetHarnessQwenMaxToolCalls: (Int) -> Unit = {},
+    onSetHarnessQwenShellTimeoutMs: (Int) -> Unit = {},
+    onSetHarnessClaudeBashTimeoutMs: (Int) -> Unit = {},
+    onSetHarnessClaudeMaxThinkingTokens: (Int) -> Unit = {},
+    onSetHarnessClaudeMaxOutputTokens: (Int) -> Unit = {},
+    onSetHarnessDshContextWindowTokens: (Int) -> Unit = {},
+    onSetHarnessDshMaxOutputTokens: (Int) -> Unit = {},
+    onSetHarnessDshReasoningEfforts: (Int) -> Unit = {},
     onResetHarnessLimits: () -> Unit = {},
     onRefreshHarnessLogs: () -> Unit = {},
     onOpenHarnessLog: (String) -> Unit = {},
@@ -174,6 +186,7 @@ fun SettingsScreen(
     var expanded by rememberSaveable { mutableStateOf<SettingsSection?>(null) }
     var harnessQwenOpen by rememberSaveable { mutableStateOf(true) }
     var harnessClaudeOpen by rememberSaveable { mutableStateOf(false) }
+    var harnessDshOpen by rememberSaveable { mutableStateOf(false) }
     var harnessLogsOpen by rememberSaveable { mutableStateOf(false) }
     var terminalCleared by remember { mutableStateOf(false) }
     var showReliabilityHelp by rememberSaveable { mutableStateOf(false) }
@@ -635,6 +648,35 @@ fun SettingsScreen(
                         maxDigits = 2,
                         onCommit = onSetHarnessQwenMaxSubagents,
                     )
+                    val qwenEffortOptions = listOf(
+                        stringResource(R.string.st_effort_default),
+                        stringResource(R.string.st_effort_low),
+                        stringResource(R.string.st_effort_medium),
+                        stringResource(R.string.st_effort_high),
+                        stringResource(R.string.st_effort_xhigh),
+                        stringResource(R.string.st_effort_max),
+                    )
+                    HarnessChoiceField(
+                        label = stringResource(R.string.st_reasoning_effort),
+                        options = qwenEffortOptions,
+                        selectedIndex = state.qwenReasoningEffort,
+                        supporting = stringResource(R.string.st_harness_qwen_effort_support),
+                        onSelect = onSetHarnessQwenReasoningEffort,
+                    )
+                    HarnessLimitField(
+                        label = stringResource(R.string.st_harness_qwen_max_tool_calls),
+                        value = state.qwenMaxToolCalls,
+                        supporting = stringResource(R.string.st_harness_qwen_max_tool_calls_support),
+                        maxDigits = 7,
+                        onCommit = onSetHarnessQwenMaxToolCalls,
+                    )
+                    HarnessLimitField(
+                        label = stringResource(R.string.st_harness_qwen_shell_timeout),
+                        value = state.qwenShellTimeoutMs,
+                        supporting = stringResource(R.string.st_harness_qwen_shell_timeout_support),
+                        maxDigits = 7,
+                        onCommit = onSetHarnessQwenShellTimeoutMs,
+                    )
                     }
                     HarnessSubSection(
                         title = AgentKind.CLAUDE_CODE.localizedTitle(),
@@ -646,6 +688,59 @@ fun SettingsScreen(
                         value = state.claudeMaxTurns,
                         supporting = stringResource(R.string.st_harness_claude_turns_support),
                         onCommit = { onSetHarnessMaxTurns(AgentKind.CLAUDE_CODE, it) },
+                    )
+                    HarnessLimitField(
+                        label = stringResource(R.string.st_harness_claude_bash_timeout),
+                        value = state.claudeBashTimeoutMs,
+                        supporting = stringResource(R.string.st_harness_claude_bash_timeout_support),
+                        maxDigits = 7,
+                        onCommit = onSetHarnessClaudeBashTimeoutMs,
+                    )
+                    HarnessLimitField(
+                        label = stringResource(R.string.st_harness_claude_thinking),
+                        value = state.claudeMaxThinkingTokens,
+                        supporting = stringResource(R.string.st_harness_claude_thinking_support),
+                        maxDigits = 7,
+                        onCommit = onSetHarnessClaudeMaxThinkingTokens,
+                    )
+                    HarnessLimitField(
+                        label = stringResource(R.string.st_harness_claude_output),
+                        value = state.claudeMaxOutputTokens,
+                        supporting = stringResource(R.string.st_harness_claude_output_support),
+                        maxDigits = 7,
+                        onCommit = onSetHarnessClaudeMaxOutputTokens,
+                    )
+                    }
+                    HarnessSubSection(
+                        title = AgentKind.DEEPSEEK_HARNESS.localizedTitle(),
+                        expanded = harnessDshOpen,
+                        onToggle = { harnessDshOpen = !harnessDshOpen },
+                    ) {
+                    HarnessLimitField(
+                        label = stringResource(R.string.st_harness_dsh_context),
+                        value = state.dshContextWindowTokens,
+                        supporting = stringResource(R.string.st_harness_dsh_context_support),
+                        maxDigits = 8,
+                        onCommit = onSetHarnessDshContextWindowTokens,
+                    )
+                    HarnessLimitField(
+                        label = stringResource(R.string.st_harness_dsh_max_output),
+                        value = state.dshMaxOutputTokens,
+                        supporting = stringResource(R.string.st_harness_dsh_max_output_support),
+                        maxDigits = 7,
+                        onCommit = onSetHarnessDshMaxOutputTokens,
+                    )
+                    HarnessChoiceField(
+                        label = stringResource(R.string.st_harness_dsh_efforts),
+                        options = listOf(
+                            stringResource(R.string.st_efforts_none),
+                            stringResource(R.string.st_efforts_simple),
+                            stringResource(R.string.st_efforts_standard),
+                            stringResource(R.string.st_efforts_extended),
+                        ),
+                        selectedIndex = state.dshReasoningEffortsPreset,
+                        supporting = stringResource(R.string.st_harness_dsh_efforts_support),
+                        onSelect = onSetHarnessDshReasoningEfforts,
                     )
                     }
                     TextButton(onClick = onResetHarnessLimits) {
@@ -1425,6 +1520,45 @@ private fun HarnessLimitField(
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )
+}
+/** Read-only dropdown for enum-like harness settings (reasoning levels, presets). */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HarnessChoiceField(
+    label: String,
+    options: List<String>,
+    selectedIndex: Int,
+    supporting: String,
+    onSelect: (Int) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        OutlinedTextField(
+            value = options.getOrElse(selectedIndex) { options.first() },
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label, fontSize = 13.sp) },
+            supportingText = { Text(supporting, fontSize = 11.sp) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            singleLine = true,
+            modifier = Modifier.menuAnchor().fillMaxWidth(),
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            options.forEachIndexed { index, option ->
+                DropdownMenuItem(
+                    text = { Text(option) },
+                    onClick = {
+                        expanded = false
+                        onSelect(index)
+                    },
+                )
+            }
+        }
+    }
 }
 
 @Composable

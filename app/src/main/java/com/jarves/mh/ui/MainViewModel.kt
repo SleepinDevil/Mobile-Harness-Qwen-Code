@@ -59,6 +59,8 @@ import com.jarves.mh.runtime.AntigravityAuthController
 import com.jarves.mh.runtime.AntigravityAuthState
 import com.jarves.mh.runtime.AntigravityAuthStatus
 import com.jarves.mh.runtime.AntigravityRuntimeBridge
+import com.jarves.mh.runtime.DSH_REASONING_EFFORT_PRESETS
+import com.jarves.mh.runtime.QWEN_REASONING_EFFORTS
 import com.jarves.mh.runtime.QwenRuntimeBridge
 import com.jarves.mh.runtime.RuntimeLogEntry
 import com.jarves.mh.runtime.RuntimeLogStore
@@ -394,6 +396,12 @@ data class AppUiState(
     val qwenAutoCompactPercent: Int = QwenRuntimeBridge.DEFAULT_AUTO_COMPACT_PERCENT,
     val qwenSubagentsEnabled: Boolean = QwenRuntimeBridge.DEFAULT_SUBAGENTS_ENABLED,
     val qwenMaxConcurrentSubagents: Int = QwenRuntimeBridge.DEFAULT_MAX_CONCURRENT_SUBAGENTS,
+    /** Picker indices into QWEN_REASONING_EFFORTS; 0 omits model.reasoningEffort. */
+    val qwenReasoningEffort: Int = 0,
+    /** Cumulative per-run tool-call budget; 0 leaves Qwen's unlimited default. */
+    val qwenMaxToolCalls: Int = 0,
+    /** tools.shell.defaultTimeoutMs override in ms; 0 keeps the CLI 120 s default. */
+    val qwenShellTimeoutMs: Int = 0,
     /** Token accounting of the latest Qwen API call (drives the context gauge). */
     val contextUsedTokens: Int = 0,
     /** Tokens streamed since that call (live estimate until exact usage arrives). */
@@ -404,6 +412,15 @@ data class AppUiState(
     /** Chat the context counters above belong to; totals restart on a new chat. */
     val contextSessionChatId: String? = null,
     val claudeMaxTurns: Int = ClaudeRuntimeBridge.DEFAULT_MAX_TURNS,
+    /** BASH_MAX_TIMEOUT_MS / MAX_THINKING_TOKENS / CLAUDE_CODE_MAX_OUTPUT_TOKENS; 0 = unset. */
+    val claudeBashTimeoutMs: Int = 0,
+    val claudeMaxThinkingTokens: Int = 0,
+    val claudeMaxOutputTokens: Int = 0,
+    /** Hand-declared dsh route model capabilities; 0 = omit (adapter defaults). */
+    val dshContextWindowTokens: Int = 0,
+    val dshMaxOutputTokens: Int = 0,
+    /** Index into DSH_REASONING_EFFORT_PRESETS; 0 declares no reasoning levels. */
+    val dshReasoningEffortsPreset: Int = 0,
     val harnessLogs: List<RuntimeLogEntry> = emptyList(),
     val harnessLogContent: HarnessLogContent? = null,
     val androidBuildRunning: Boolean = false,
@@ -444,8 +461,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         application,
         secretFor = { profile -> vault.get(profile.kind.name) },
         maxTurns = { _state.value.claudeMaxTurns },
+        bashMaxTimeoutMs = { _state.value.claudeBashTimeoutMs },
+        maxThinkingTokens = { _state.value.claudeMaxThinkingTokens },
+        maxOutputTokens = { _state.value.claudeMaxOutputTokens },
     )
-    private val dshRuntime = DshRuntimeBridge(application) { profile -> vault.get(profile.kind.name) }
+    private val dshRuntime = DshRuntimeBridge(
+        application,
+        secretFor = { profile -> vault.get(profile.kind.name) },
+        contextWindowTokens = { _state.value.dshContextWindowTokens },
+        maxOutputTokens = { _state.value.dshMaxOutputTokens },
+        reasoningEffortsPreset = { _state.value.dshReasoningEffortsPreset },
+    )
     private val qwenRuntime = QwenRuntimeBridge(
         application,
         secretFor = { profile -> vault.get(profile.kind.name) },
@@ -455,6 +481,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         autoCompactPercent = { _state.value.qwenAutoCompactPercent },
         subagentsEnabled = { _state.value.qwenSubagentsEnabled },
         maxConcurrentSubagents = { _state.value.qwenMaxConcurrentSubagents },
+        reasoningEffort = { _state.value.qwenReasoningEffort },
+        maxToolCalls = { _state.value.qwenMaxToolCalls },
+        shellTimeoutMs = { _state.value.qwenShellTimeoutMs },
     )
     private val installer = RuntimeInstaller(application)
     private val antigravityRuntime = AntigravityRuntimeBridge(
@@ -542,6 +571,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             qwenSubagentsEnabled = preferences.agentFlag(AgentKind.QWEN_CODE, HARNESS_FLAG_SUBAGENTS, QwenRuntimeBridge.DEFAULT_SUBAGENTS_ENABLED),
             qwenMaxConcurrentSubagents = preferences.agentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_MAX_SUBAGENTS, QwenRuntimeBridge.DEFAULT_MAX_CONCURRENT_SUBAGENTS),
             claudeMaxTurns = preferences.agentLimit(AgentKind.CLAUDE_CODE, HARNESS_LIMIT_TURNS, ClaudeRuntimeBridge.DEFAULT_MAX_TURNS),
+            qwenReasoningEffort = preferences.agentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_REASONING_EFFORT, 0),
+            qwenMaxToolCalls = preferences.agentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_MAX_TOOL_CALLS, 0),
+            qwenShellTimeoutMs = preferences.agentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_SHELL_TIMEOUT_MS, 0),
+            claudeBashTimeoutMs = preferences.agentLimit(AgentKind.CLAUDE_CODE, HARNESS_LIMIT_BASH_TIMEOUT_MS, 0),
+            claudeMaxThinkingTokens = preferences.agentLimit(AgentKind.CLAUDE_CODE, HARNESS_LIMIT_MAX_THINKING_TOKENS, 0),
+            claudeMaxOutputTokens = preferences.agentLimit(AgentKind.CLAUDE_CODE, HARNESS_LIMIT_MAX_OUTPUT_TOKENS, 0),
+            dshContextWindowTokens = preferences.agentLimit(AgentKind.DEEPSEEK_HARNESS, HARNESS_LIMIT_CONTEXT_TOKENS, 0),
+            dshMaxOutputTokens = preferences.agentLimit(AgentKind.DEEPSEEK_HARNESS, HARNESS_LIMIT_MAX_OUTPUT_TOKENS, 0),
+            dshReasoningEffortsPreset = preferences.agentLimit(AgentKind.DEEPSEEK_HARNESS, HARNESS_LIMIT_REASONING_PRESET, 0),
             themeMode = runCatching { com.jarves.mh.ui.theme.AppThemeMode.valueOf(preferences.themeMode.uppercase()) }
                 .getOrDefault(com.jarves.mh.ui.theme.AppThemeMode.DARK),
             languageCode = preferences.languageCode,
@@ -1015,6 +1053,68 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         preferences.setAgentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_MAX_SUBAGENTS, clamped)
         _state.update { it.copy(qwenMaxConcurrentSubagents = clamped) }
     }
+    /** effort is a QWEN_REASONING_EFFORTS picker index; 0 omits the setting. */
+    fun setHarnessQwenReasoningEffort(effort: Int) {
+        val clamped = effort.coerceIn(0, QWEN_REASONING_EFFORTS.size)
+        preferences.setAgentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_REASONING_EFFORT, clamped)
+        _state.update { it.copy(qwenReasoningEffort = clamped) }
+    }
+
+    /** 0 = unlimited (Qwen default); the CLI caps at 1 000 000. */
+    fun setHarnessQwenMaxToolCalls(calls: Int) {
+        val clamped = calls.coerceIn(0, 1_000_000)
+        preferences.setAgentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_MAX_TOOL_CALLS, clamped)
+        _state.update { it.copy(qwenMaxToolCalls = clamped) }
+    }
+
+    /** 0 keeps the CLI 120 s default. */
+    fun setHarnessQwenShellTimeoutMs(millis: Int) {
+        val clamped = millis.coerceIn(0, 3_600_000)
+        preferences.setAgentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_SHELL_TIMEOUT_MS, clamped)
+        _state.update { it.copy(qwenShellTimeoutMs = clamped) }
+    }
+
+    /** 0 leaves BASH_MAX_TIMEOUT_MS unset. */
+    fun setHarnessClaudeBashTimeoutMs(millis: Int) {
+        val clamped = millis.coerceIn(0, 3_600_000)
+        preferences.setAgentLimit(AgentKind.CLAUDE_CODE, HARNESS_LIMIT_BASH_TIMEOUT_MS, clamped)
+        _state.update { it.copy(claudeBashTimeoutMs = clamped) }
+    }
+
+    /** 0 leaves MAX_THINKING_TOKENS unset. */
+    fun setHarnessClaudeMaxThinkingTokens(tokens: Int) {
+        val clamped = tokens.coerceIn(0, 1_000_000)
+        preferences.setAgentLimit(AgentKind.CLAUDE_CODE, HARNESS_LIMIT_MAX_THINKING_TOKENS, clamped)
+        _state.update { it.copy(claudeMaxThinkingTokens = clamped) }
+    }
+
+    /** 0 leaves CLAUDE_CODE_MAX_OUTPUT_TOKENS unset. */
+    fun setHarnessClaudeMaxOutputTokens(tokens: Int) {
+        val clamped = tokens.coerceIn(0, 1_000_000)
+        preferences.setAgentLimit(AgentKind.CLAUDE_CODE, HARNESS_LIMIT_MAX_OUTPUT_TOKENS, clamped)
+        _state.update { it.copy(claudeMaxOutputTokens = clamped) }
+    }
+
+    /** 0 omits contextWindow; dsh adapter default 262 144 then applies. */
+    fun setHarnessDshContextWindowTokens(tokens: Int) {
+        val clamped = tokens.coerceIn(0, 10_000_000)
+        preferences.setAgentLimit(AgentKind.DEEPSEEK_HARNESS, HARNESS_LIMIT_CONTEXT_TOKENS, clamped)
+        _state.update { it.copy(dshContextWindowTokens = clamped) }
+    }
+
+    /** 0 omits maxTokens; dsh adapter default 32 768 then applies. */
+    fun setHarnessDshMaxOutputTokens(tokens: Int) {
+        val clamped = tokens.coerceIn(0, 1_000_000)
+        preferences.setAgentLimit(AgentKind.DEEPSEEK_HARNESS, HARNESS_LIMIT_MAX_OUTPUT_TOKENS, clamped)
+        _state.update { it.copy(dshMaxOutputTokens = clamped) }
+    }
+
+    /** preset indexes DSH_REASONING_EFFORT_PRESETS; 0 declares no reasoning. */
+    fun setHarnessDshReasoningEfforts(preset: Int) {
+        val clamped = preset.coerceIn(0, DSH_REASONING_EFFORT_PRESETS.keys.maxOrNull() ?: 0)
+        preferences.setAgentLimit(AgentKind.DEEPSEEK_HARNESS, HARNESS_LIMIT_REASONING_PRESET, clamped)
+        _state.update { it.copy(dshReasoningEffortsPreset = clamped) }
+    }
 
     fun resetHarnessLimits() {
         preferences.setAgentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_TURNS, QwenRuntimeBridge.DEFAULT_MAX_SESSION_TURNS)
@@ -1024,6 +1124,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         preferences.setAgentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_MAX_SUBAGENTS, QwenRuntimeBridge.DEFAULT_MAX_CONCURRENT_SUBAGENTS)
         preferences.setAgentFlag(AgentKind.QWEN_CODE, HARNESS_FLAG_SUBAGENTS, QwenRuntimeBridge.DEFAULT_SUBAGENTS_ENABLED)
         preferences.setAgentLimit(AgentKind.CLAUDE_CODE, HARNESS_LIMIT_TURNS, ClaudeRuntimeBridge.DEFAULT_MAX_TURNS)
+        preferences.setAgentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_REASONING_EFFORT, 0)
+        preferences.setAgentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_MAX_TOOL_CALLS, 0)
+        preferences.setAgentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_SHELL_TIMEOUT_MS, 0)
+        preferences.setAgentLimit(AgentKind.CLAUDE_CODE, HARNESS_LIMIT_BASH_TIMEOUT_MS, 0)
+        preferences.setAgentLimit(AgentKind.CLAUDE_CODE, HARNESS_LIMIT_MAX_THINKING_TOKENS, 0)
+        preferences.setAgentLimit(AgentKind.CLAUDE_CODE, HARNESS_LIMIT_MAX_OUTPUT_TOKENS, 0)
+        preferences.setAgentLimit(AgentKind.DEEPSEEK_HARNESS, HARNESS_LIMIT_CONTEXT_TOKENS, 0)
+        preferences.setAgentLimit(AgentKind.DEEPSEEK_HARNESS, HARNESS_LIMIT_MAX_OUTPUT_TOKENS, 0)
+        preferences.setAgentLimit(AgentKind.DEEPSEEK_HARNESS, HARNESS_LIMIT_REASONING_PRESET, 0)
         _state.update {
             it.copy(
                 qwenMaxSessionTurns = QwenRuntimeBridge.DEFAULT_MAX_SESSION_TURNS,
@@ -1033,6 +1142,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 qwenMaxConcurrentSubagents = QwenRuntimeBridge.DEFAULT_MAX_CONCURRENT_SUBAGENTS,
                 qwenSubagentsEnabled = QwenRuntimeBridge.DEFAULT_SUBAGENTS_ENABLED,
                 claudeMaxTurns = ClaudeRuntimeBridge.DEFAULT_MAX_TURNS,
+                qwenReasoningEffort = 0,
+                qwenMaxToolCalls = 0,
+                qwenShellTimeoutMs = 0,
+                claudeBashTimeoutMs = 0,
+                claudeMaxThinkingTokens = 0,
+                claudeMaxOutputTokens = 0,
+                dshContextWindowTokens = 0,
+                dshMaxOutputTokens = 0,
+                dshReasoningEffortsPreset = 0,
             )
         }
     }
@@ -5794,6 +5912,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private const val HARNESS_LIMIT_AUTO_COMPACT = "auto_compact_percent"
         private const val HARNESS_LIMIT_MAX_SUBAGENTS = "max_subagents"
         private const val HARNESS_FLAG_SUBAGENTS = "subagents_enabled"
+        private const val HARNESS_LIMIT_REASONING_EFFORT = "reasoning_effort"
+        private const val HARNESS_LIMIT_MAX_TOOL_CALLS = "max_tool_calls"
+        private const val HARNESS_LIMIT_SHELL_TIMEOUT_MS = "shell_timeout_ms"
+        private const val HARNESS_LIMIT_BASH_TIMEOUT_MS = "bash_timeout_ms"
+        private const val HARNESS_LIMIT_MAX_THINKING_TOKENS = "max_thinking_tokens"
+        private const val HARNESS_LIMIT_MAX_OUTPUT_TOKENS = "max_output_tokens"
+        private const val HARNESS_LIMIT_REASONING_PRESET = "reasoning_efforts_preset"
         private const val MAX_ACTIVITY_DETAIL_CHARS = 8_000
         private const val MAX_ACTIVITY_FULL_DETAIL_CHARS = 100_000
         private const val MAX_SUBAGENT_ENTRIES = 60
