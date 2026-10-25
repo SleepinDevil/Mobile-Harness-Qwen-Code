@@ -182,8 +182,5 @@
     <string name="ws_open_url">Open URL</string>
     <string name="ws_refresh_preview">Refresh preview</string>
     <string name="ws_chat_reasoning">Reasoning level</string>
-    <string name="ws_chat_reasoning_hint">Applies from the next message in this chat, including its subagents. New chats follow Settings.</string>
-    <string name="ws_chat_reasoning_on_chat">Custom for this chat</string>
-    <string name="ws_chat_reasoning_following">Following Settings</string>
     <string name="ws_chat_reasoning_follow_settings">Follow Settings again</string>
 </resources>

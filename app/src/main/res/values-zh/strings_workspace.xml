@@ -182,8 +182,5 @@
     <string name="ws_open_url">打开网址</string>
     <string name="ws_refresh_preview">刷新预览</string>
     <string name="ws_chat_reasoning">思考等级</string>
-    <string name="ws_chat_reasoning_hint">从本对话下一条消息起生效，包含其子代理。新对话沿用设置页选择。</string>
-    <string name="ws_chat_reasoning_on_chat">本对话自定义</string>
-    <string name="ws_chat_reasoning_following">沿用设置页</string>
     <string name="ws_chat_reasoning_follow_settings">改为沿用设置页</string>
 </resources>

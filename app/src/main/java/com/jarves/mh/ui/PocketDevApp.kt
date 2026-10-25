@@ -4848,13 +4848,13 @@ private fun WorkspaceScreen(
                     )
                 }
                 val chatReasoningOverride = activeChat?.reasoningOverride ?: -1
-                val reasoningSelected = if (chatReasoningOverride >= 0) {
-                    chatReasoningOverride
-                } else if (state.agentKind == AgentKind.QWEN_CODE) {
+                val globalReasoning = if (state.agentKind == AgentKind.QWEN_CODE) {
                     state.qwenReasoningEffort
                 } else {
                     state.dshReasoningEffortsPreset
                 }
+                val reasoningSelected =
+                    if (chatReasoningOverride >= 0) chatReasoningOverride else globalReasoning
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -4885,7 +4885,7 @@ private fun WorkspaceScreen(
                     ChatReasoningButton(
                         options = reasoningOptions,
                         selectedIndex = reasoningSelected,
-                        overridden = chatReasoningOverride >= 0,
+                        overridden = reasoningSelected != globalReasoning,
                         onSelect = onSelectChatReasoning,
                     )
                 }
@@ -4942,11 +4942,28 @@ private fun ChatReasoningButton(
                         color = PocketOrange,
                     )
                     if (options.size >= 2) {
+                        // Local drag state: pushing every snapped step through the
+                        // StateFlow re-anchors the controlled thumb mid-drag, which
+                        // makes the final stop unreachable. Follow props only while
+                        // the user is not holding the slider.
+                        var sliderPosition by remember { mutableFloatStateOf(selectedIndex.toFloat()) }
+                        var dragging by remember { mutableStateOf(false) }
+                        LaunchedEffect(selectedIndex) {
+                            if (!dragging) {
+                                sliderPosition = selectedIndex.coerceIn(0, options.size - 1).toFloat()
+                            }
+                        }
                         Slider(
-                            value = selectedIndex.coerceIn(0, options.size - 1).toFloat(),
+                            value = sliderPosition,
                             onValueChange = { raw ->
+                                dragging = true
+                                sliderPosition = raw
                                 val index = raw.roundToInt().coerceIn(0, options.size - 1)
                                 if (index != selectedIndex) onSelect(index)
+                            },
+                            onValueChangeFinished = {
+                                dragging = false
+                                sliderPosition = selectedIndex.coerceIn(0, options.size - 1).toFloat()
                             },
                             modifier = Modifier.fillMaxWidth(),
                             valueRange = 0f..(options.size - 1).toFloat(),
@@ -4968,18 +4985,6 @@ private fun ChatReasoningButton(
                             )
                         }
                     }
-                    Text(
-                        stringResource(
-                            if (overridden) R.string.ws_chat_reasoning_on_chat else R.string.ws_chat_reasoning_following,
-                        ),
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        stringResource(R.string.ws_chat_reasoning_hint),
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                     if (overridden) {
                         Text(
                             stringResource(R.string.ws_chat_reasoning_follow_settings),

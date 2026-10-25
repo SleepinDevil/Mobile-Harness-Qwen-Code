@@ -182,8 +182,5 @@
     <string name="ws_open_url">Открыть URL</string>
     <string name="ws_refresh_preview">Обновить предпросмотр</string>
     <string name="ws_chat_reasoning">Уровень размышления</string>
-    <string name="ws_chat_reasoning_hint">Действует со следующего сообщения в этом чате, включая субагентов. Новые чаты следуют настройкам.</string>
-    <string name="ws_chat_reasoning_on_chat">Свой уровень для чата</string>
-    <string name="ws_chat_reasoning_following">По настройкам</string>
     <string name="ws_chat_reasoning_follow_settings">Снова по настройкам</string>
 </resources>

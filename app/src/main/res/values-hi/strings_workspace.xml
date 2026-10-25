@@ -182,8 +182,5 @@
     <string name="ws_open_url">URL खोलें</string>
     <string name="ws_refresh_preview">प्रीव्यू रीफ़्रेश करें</string>
     <string name="ws_chat_reasoning">रीज़निंग स्तर</string>
-    <string name="ws_chat_reasoning_hint">इस चैट के अगले संदेश से लागू, इसके सबएजेंट्स सहित। नए चैट सेटिंग्स का पालन करते हैं।</string>
-    <string name="ws_chat_reasoning_on_chat">इस चैट के लिए कस्टम</string>
-    <string name="ws_chat_reasoning_following">सेटिंग्स के अनुसार</string>
     <string name="ws_chat_reasoning_follow_settings">फिर से सेटिंग्स अनुसार</string>
 </resources>
