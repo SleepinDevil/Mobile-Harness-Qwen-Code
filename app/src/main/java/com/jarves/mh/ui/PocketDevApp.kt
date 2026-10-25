@@ -160,9 +160,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.filled.Psychology
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
-import androidx.compose.material3.rememberModalBottomSheetState
 import kotlin.math.roundToInt
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -4896,12 +4894,12 @@ private fun WorkspaceScreen(
     }
 }
 /**
- * Floating brain button for reasoning-capable harnesses: opens a bottom sheet
- * whose slider picks the reasoning level for this conversation only. The pick
- * persists on the chat and applies from the next message onward (subagents
- * included, since they share the session's settings); Settings stays untouched.
+ * Floating reasoning button for capable harnesses: toggles an inline panel
+ * (same shape as the context gauge / subagent monitor) whose slider picks the
+ * reasoning level for this conversation only. The pick persists on the chat and
+ * applies from the next message onward (subagents included, since they share
+ * the session's settings); Settings stays untouched.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ChatReasoningButton(
     options: List<String>,
@@ -4909,66 +4907,104 @@ private fun ChatReasoningButton(
     overridden: Boolean,
     onSelect: (Int) -> Unit,
 ) {
-    var sheetOpen by rememberSaveable { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState()
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        tonalElevation = 3.dp,
-        shadowElevation = 6.dp,
-        color = MaterialTheme.colorScheme.surface,
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        IconButton(onClick = { sheetOpen = true }) {
-            Icon(
-                Icons.Filled.Psychology,
-                contentDescription = stringResource(R.string.ws_chat_reasoning),
-                tint = if (overridden) PocketOrange else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-    if (sheetOpen) {
-        ModalBottomSheet(onDismissRequest = { sheetOpen = false }, sheetState = sheetState) {
-            Column(
-                Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+        AnimatedVisibility(
+            visible = expanded,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                tonalElevation = 3.dp,
+                shadowElevation = 6.dp,
+                color = MaterialTheme.colorScheme.surface,
             ) {
-                Text(stringResource(R.string.ws_chat_reasoning), fontWeight = FontWeight.Medium, fontSize = 15.sp)
-                Text(
-                    options.getOrElse(selectedIndex) { options.firstOrNull().orEmpty() },
-                    color = PocketOrange,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 13.sp,
-                )
-                if (options.size >= 2) {
-                    Slider(
-                        value = selectedIndex.coerceIn(0, options.size - 1).toFloat(),
-                        onValueChange = { raw ->
-                            val index = raw.roundToInt().coerceIn(0, options.size - 1)
-                            if (index != selectedIndex) onSelect(index)
-                        },
-                        valueRange = 0f..(options.size - 1).toFloat(),
-                        steps = options.size - 2,
+                Column(
+                    modifier = Modifier
+                        .widthIn(max = 240.dp)
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    Text(
+                        stringResource(R.string.ws_chat_reasoning),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(options.first(), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(options.last(), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        options.getOrElse(selectedIndex) { options.firstOrNull().orEmpty() },
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = PocketOrange,
+                    )
+                    if (options.size >= 2) {
+                        Slider(
+                            value = selectedIndex.coerceIn(0, options.size - 1).toFloat(),
+                            onValueChange = { raw ->
+                                val index = raw.roundToInt().coerceIn(0, options.size - 1)
+                                if (index != selectedIndex) onSelect(index)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            valueRange = 0f..(options.size - 1).toFloat(),
+                            steps = options.size - 2,
+                        )
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                options.first(),
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                options.last(),
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    Text(
+                        stringResource(
+                            if (overridden) R.string.ws_chat_reasoning_on_chat else R.string.ws_chat_reasoning_following,
+                        ),
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        stringResource(R.string.ws_chat_reasoning_hint),
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (overridden) {
+                        Text(
+                            stringResource(R.string.ws_chat_reasoning_follow_settings),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = PocketOrange,
+                            modifier = Modifier.clickable { onSelect(-1) },
+                        )
                     }
                 }
-                Text(
-                    stringResource(
-                        if (overridden) R.string.ws_chat_reasoning_on_chat else R.string.ws_chat_reasoning_following,
-                    ),
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+            }
+        }
+        Surface(
+            onClick = { expanded = !expanded },
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 2.dp,
+            shadowElevation = 4.dp,
+        ) {
+            Box(Modifier.size(46.dp).padding(11.dp), contentAlignment = Alignment.Center) {
+                Icon(
+                    Icons.Filled.Psychology,
+                    contentDescription = stringResource(R.string.ws_chat_reasoning),
+                    tint = if (overridden) PocketOrange else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Text(stringResource(R.string.ws_chat_reasoning_hint), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (overridden) {
-                    TextButton(onClick = { onSelect(-1) }) {
-                        Text(stringResource(R.string.ws_chat_reasoning_follow_settings))
-                    }
-                }
             }
         }
     }
