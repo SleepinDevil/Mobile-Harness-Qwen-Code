@@ -35,6 +35,8 @@ import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -48,7 +50,6 @@ import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
@@ -4817,8 +4818,7 @@ private fun WorkspaceScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp, end = 12.dp)
-                        .animateContentSize(),
+                        .padding(top = 8.dp, end = 12.dp),
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
@@ -7640,8 +7640,8 @@ private fun SubagentMonitor(
     ) {
         AnimatedVisibility(
             visible = expanded,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
         ) {
             Surface(
                 shape = RoundedCornerShape(14.dp),
@@ -7873,8 +7873,8 @@ private fun ContextGauge(data: ContextGaugeData, modifier: Modifier = Modifier) 
     ) {
         AnimatedVisibility(
             visible = expanded,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
         ) {
             Surface(
                 shape = RoundedCornerShape(14.dp),
