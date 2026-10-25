@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="ws_subagent_starting">Iniciando…</string>
+    <string name="ws_context_title">Contexto</string>
+    <string name="ws_context_usage">%1$s de %2$s tokens</string>
+    <string name="ws_subagents_none">Aún no hay subagentes en esta tarea.</string>
     <string name="ws_subagents_title">Subagentes</string>
     <string name="ws_subagent_done">Hecho</string>
     <string name="ws_subagent_thinking">Pensamiento</string>

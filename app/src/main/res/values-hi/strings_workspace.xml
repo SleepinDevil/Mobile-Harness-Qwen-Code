@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="ws_subagent_starting">प्रारंभ हो रहा है…</string>
+    <string name="ws_context_title">संदर्भ</string>
+    <string name="ws_context_usage">%2$s में से %1$s टोकन</string>
+    <string name="ws_subagents_none">इस कार्य में अबी कोई सबएजेंट नहीं।</string>
     <string name="ws_subagents_title">सबएजेंट</string>
     <string name="ws_subagent_done">पूर्ण</string>
     <string name="ws_subagent_thinking">सोच</string>

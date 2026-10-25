@@ -246,8 +246,11 @@ fun SettingsScreen(
             },
             confirmButton = {
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    TextButton(onClick = { clipboard.setText(AnnotatedString(log.text)) }) {
-                        Text(stringResource(R.string.st_harness_log_copy))
+                    TextButton(
+                        enabled = log.issues.isNotEmpty(),
+                        onClick = { clipboard.setText(AnnotatedString(log.issues.joinToString("\n"))) },
+                    ) {
+                        Text(stringResource(R.string.st_harness_log_copy_notable))
                     }
                     TextButton(
                         enabled = log.text.isNotBlank(),
@@ -256,7 +259,7 @@ fun SettingsScreen(
                             logExportLauncher.launch(log.id)
                         },
                     ) {
-                        Text(stringResource(R.string.st_harness_log_save))
+                        Text(stringResource(R.string.st_harness_log_download_full))
                     }
                 }
             },

@@ -372,6 +372,13 @@ sealed interface RuntimeEvent {
         val text: String,
     ) : RuntimeEvent
     data class SubagentFinished(override val sessionId: String, val callId: String) : RuntimeEvent
+    data class SubagentUsage(
+        override val sessionId: String,
+        val callId: String,
+        val usedTokens: Int,
+    ) : RuntimeEvent
+    /** Prompt+completion tokens of the most recent main-agent API call (context fill). */
+    data class ContextUsage(override val sessionId: String, val usedTokens: Int) : RuntimeEvent
     data class SessionCompleted(override val sessionId: String) : RuntimeEvent
     data class SessionFailed(override val sessionId: String, val reason: String) : RuntimeEvent
 }
@@ -388,6 +395,7 @@ data class SubagentStatus(
     val activity: String = "",
     val running: Boolean = true,
     val entries: List<ActivityItem> = emptyList(),
+    val contextTokens: Int = 0,
 )
 
 data class ChatMessage(

@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="ws_subagent_starting">جارٍ البدء…</string>
+    <string name="ws_context_title">السياق</string>
+    <string name="ws_context_usage">%1$s من %2$s رمزًا</string>
+    <string name="ws_subagents_none">لا يوجد وكلاء فرعيون في هذه المهمة بعد.</string>
     <string name="ws_subagents_title">‏وكلاء فرعيون</string>
     <string name="ws_subagent_done">‏تم</string>
     <string name="ws_subagent_thinking">‏تفكير</string>

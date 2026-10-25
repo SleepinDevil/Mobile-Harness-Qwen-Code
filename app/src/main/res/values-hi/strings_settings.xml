@@ -134,11 +134,12 @@
     <string name="st_harness_logs_clear">लॉग साफ़ करें</string>
     <string name="st_harness_logs_cleared">हार्नेस लॉग साफ़ हो गए</string>
     <string name="st_harness_log_open_title">हार्नेस लॉग</string>
-    <string name="st_harness_log_copy">लॉग कॉपी करें</string>
     <string name="st_harness_log_save">डिवाइस पर सहेजें</string>
     <string name="st_harness_log_issues">%1$d उल्लेख संदेश</string>
     <string name="st_harness_log_full">पूर्ण लॉग</string>
     <string name="st_harness_logs_download">सबहीं लॉग डाउन्लोड करें</string>
+    <string name="st_harness_log_copy_notable">उल्लेख संदेश कॉपी करें</string>
+    <string name="st_harness_log_download_full">पूरा लॉग डाउन्लोड करें</string>
     <string name="st_harness_logs_saved">लॉग सहेजा गया</string>
     <string name="st_harness_logs_save_failed">लॉग सहेजने में असमर्थ</string>
     <string name="st_harness_log_missing">यह लॉग अब उपलब्ध नहीं है।</string>

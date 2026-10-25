@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="ws_subagent_starting">启动中…</string>
+    <string name="ws_context_title">上下文</string>
+    <string name="ws_context_usage">%1$s / %2$s tokens</string>
+    <string name="ws_subagents_none">此任务暂无子代理。</string>
     <string name="ws_subagents_title">子代理</string>
     <string name="ws_subagent_done">已完成</string>
     <string name="ws_subagent_thinking">思考</string>

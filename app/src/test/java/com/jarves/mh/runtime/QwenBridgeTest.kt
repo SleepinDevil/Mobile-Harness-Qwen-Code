@@ -257,6 +257,20 @@ class QwenBridgeTest {
         assertEquals("call-1", qwenParentToolUseId(JSONObject().put("parent_tool_use_id", "call-1")))
     }
 
+    @Test
+    fun contextTokensSumPromptCacheAndCompletion() {
+        val message = JSONObject().put(
+            "usage",
+            JSONObject()
+                .put("input_tokens", 120)
+                .put("cache_read_input_tokens", 3_400)
+                .put("cache_creation_input_tokens", 80)
+                .put("output_tokens", 45),
+        )
+        assertEquals(3_645, qwenContextTokens(message))
+        assertEquals(0, qwenContextTokens(JSONObject()))
+    }
+
     private fun qwenTestRoute() = QwenRoute(
         authType = "openai",
         envKey = "OPENAI_API_KEY",

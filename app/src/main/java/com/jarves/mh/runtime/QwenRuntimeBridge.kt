@@ -443,6 +443,10 @@ class QwenRuntimeBridge(
                         "tool_use" -> emitToolStarted(sessionId, block)
                     }
                 }
+                val contextTokens = qwenContextTokens(message)
+                if (contextTokens > 0) {
+                    eventBus.emit(RuntimeEvent.ContextUsage(sessionId, contextTokens))
+                }
                 streamedText.clear()
                 // Some providers omit the final `result` envelope. An assistant
                 // end_turn is still authoritative; tool_use means another turn follows.
@@ -492,7 +496,8 @@ class QwenRuntimeBridge(
     private suspend fun consumeSubagentJsonEvent(sessionId: String, parentCallId: String, json: JSONObject) {
         when (json.optString("type")) {
             "assistant" -> {
-                val content = json.optJSONObject("message")?.optJSONArray("content") ?: return
+                val message = json.optJSONObject("message") ?: return
+                val content = message.optJSONArray("content") ?: return
                 for (index in 0 until content.length()) {
                     val block = content.optJSONObject(index) ?: continue
                     when (block.optString("type")) {
@@ -514,6 +519,10 @@ class QwenRuntimeBridge(
                             eventBus.emit(RuntimeEvent.SubagentReply(sessionId, parentCallId, sanitizeFull(it)))
                         }
                     }
+                }
+                val contextTokens = qwenContextTokens(message)
+                if (contextTokens > 0) {
+                    eventBus.emit(RuntimeEvent.SubagentUsage(sessionId, parentCallId, contextTokens))
                 }
             }
             "user" -> {
@@ -1072,3 +1081,14 @@ internal fun qwenParentToolUseId(json: JSONObject): String? =
     } else {
         null
     }
+
+/**
+ * Tokens occupying the model's context after one API call: the prompt
+ * (fresh + cached + cache-write input) plus the completion it produced.
+ * Returns 0 when the envelope carries no usage (provider did not report).
+ */
+internal fun qwenContextTokens(message: JSONObject): Int {
+    val usage = message.optJSONObject("usage") ?: return 0
+    return usage.optInt("input_tokens") + usage.optInt("cache_read_input_tokens") +
+        usage.optInt("cache_creation_input_tokens") + usage.optInt("output_tokens")
+}

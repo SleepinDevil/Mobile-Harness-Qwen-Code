@@ -394,6 +394,8 @@ data class AppUiState(
     val qwenAutoCompactPercent: Int = QwenRuntimeBridge.DEFAULT_AUTO_COMPACT_PERCENT,
     val qwenSubagentsEnabled: Boolean = QwenRuntimeBridge.DEFAULT_SUBAGENTS_ENABLED,
     val qwenMaxConcurrentSubagents: Int = QwenRuntimeBridge.DEFAULT_MAX_CONCURRENT_SUBAGENTS,
+    /** Prompt+completion tokens of the last Qwen API call (drives the context gauge). */
+    val contextUsedTokens: Int = 0,
     val claudeMaxTurns: Int = ClaudeRuntimeBridge.DEFAULT_MAX_TURNS,
     val harnessLogs: List<RuntimeLogEntry> = emptyList(),
     val harnessLogContent: HarnessLogContent? = null,
@@ -5353,6 +5355,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     subagents = current.subagents.filterNot { it.callId == event.callId } +
                         SubagentStatus(callId = event.callId, description = event.description),
                 )
+                is RuntimeEvent.ContextUsage -> current.copy(contextUsedTokens = event.usedTokens)
+                is RuntimeEvent.SubagentUsage -> current.copy(
+                    subagents = current.subagents.map { sub ->
+                        if (sub.callId == event.callId) sub.copy(contextTokens = event.usedTokens) else sub
+                    },
+                )
                 is RuntimeEvent.SubagentActivity -> {
                     val known = current.subagents.any { it.callId == event.callId }
                     current.copy(
@@ -5580,13 +5588,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /** Appends one transcript block ("Thinking"/"Reply") to a subagent's live status. */
     private fun appendSubagentEntry(current: AppUiState, callId: String, title: String, text: String): AppUiState {
         val existing = current.subagents.firstOrNull { it.callId == callId }
-        val updated = SubagentStatus(
-            callId = callId,
-            description = existing?.description ?: "Subagent",
-            activity = existing?.activity.orEmpty(),
-            running = existing?.running ?: true,
-            entries = ((existing?.entries ?: emptyList()) + ActivityItem(title, text)).takeLast(MAX_SUBAGENT_ENTRIES),
-        )
+        val updated = if (existing == null) {
+            SubagentStatus(
+                callId = callId,
+                description = "Subagent",
+                entries = listOf(ActivityItem(title, text)),
+            )
+        } else {
+            existing.copy(
+                entries = (existing.entries + ActivityItem(title, text)).takeLast(MAX_SUBAGENT_ENTRIES),
+            )
+        }
         return current.copy(
             subagents = if (existing == null) {
                 current.subagents + updated

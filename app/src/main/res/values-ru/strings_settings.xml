@@ -134,11 +134,12 @@
     <string name="st_harness_logs_clear">Очистить журналы</string>
     <string name="st_harness_logs_cleared">Журналы агентов очищены</string>
     <string name="st_harness_log_open_title">Журнал агента</string>
-    <string name="st_harness_log_copy">Копировать журнал</string>
     <string name="st_harness_log_save">Сохранить на устройство</string>
     <string name="st_harness_log_issues">Заметных сообщений: %1$d</string>
     <string name="st_harness_log_full">Полный лог</string>
     <string name="st_harness_logs_download">Скачать все логи</string>
+    <string name="st_harness_log_copy_notable">Копировать важное</string>
+    <string name="st_harness_log_download_full">Скачать весь лог</string>
     <string name="st_harness_logs_saved">Лог сохранён</string>
     <string name="st_harness_logs_save_failed">Не удалось сохранить лог</string>
     <string name="st_harness_log_missing">Этот журнал больше недоступен.</string>

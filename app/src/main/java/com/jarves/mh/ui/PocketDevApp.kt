@@ -11,6 +11,7 @@ import android.net.Uri
 import androidx.core.content.FileProvider
 import java.io.File
 import java.text.SimpleDateFormat
+import java.text.NumberFormat
 import java.util.Date
 import java.util.Locale
 import android.provider.Settings
@@ -41,12 +42,14 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
@@ -192,6 +195,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
@@ -4796,13 +4803,24 @@ private fun WorkspaceScreen(
                 )
                 WorkspaceTab.PREVIEW -> PreviewTab(state.previewReady, state.previewUrl)
             }
-            if (selectedTab == WorkspaceTab.CHAT && state.subagents.isNotEmpty()) {
-                SubagentMonitor(
-                    subagents = state.subagents,
+            if (selectedTab == WorkspaceTab.CHAT && state.agentKind == AgentKind.QWEN_CODE) {
+                Column(
                     modifier = Modifier
                         .align(Alignment.CenterStart)
                         .padding(start = 12.dp, top = 8.dp, bottom = 8.dp),
-                )
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    ContextGauge(
+                        usedTokens = state.contextUsedTokens,
+                        maxTokens = state.qwenContextWindowTokens,
+                    )
+                    if (state.qwenSubagentsEnabled && state.qwenMaxConcurrentSubagents >= 1) {
+                        SubagentMonitor(
+                            subagents = state.subagents,
+                            maxContextTokens = state.qwenContextWindowTokens,
+                        )
+                    }
+                }
             }
         }
     }
@@ -7458,17 +7476,22 @@ private fun BrandMark(modifier: Modifier = Modifier, compact: Boolean = false) {
 }
 
 /**
- * Floating subagent monitor pinned to the middle-left edge of the chat: shows how
- * many subagents this task used (running ones pulse, finished stay reviewable).
+ * Floating subagent monitor pinned to the middle-left edge of the chat: the pill
+ * shows how many subagents are running right now and stays visible whenever the
+ * harness has subagents enabled, so past runs stay reviewable between tasks.
  * Tapping the pill expands the list; tapping an entry opens its thinking/reply
- * transcript. Only Qwen Code emits subagent events, so it stays hidden for the
- * other agents.
+ * transcript. Qwen Code is the only agent with subagents.
  */
 @Composable
-private fun SubagentMonitor(subagents: List<SubagentStatus>, modifier: Modifier = Modifier) {
+private fun SubagentMonitor(
+    subagents: List<SubagentStatus>,
+    maxContextTokens: Int,
+    modifier: Modifier = Modifier,
+) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     var openCallId by remember { mutableStateOf<String?>(null) }
     val shown = subagents.firstOrNull { it.callId == openCallId }
+    val runningCount = subagents.count { it.running }
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
@@ -7488,7 +7511,7 @@ private fun SubagentMonitor(subagents: List<SubagentStatus>, modifier: Modifier 
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Icon(Icons.Filled.SmartToy, contentDescription = null, modifier = Modifier.size(16.dp))
-                Text("${subagents.size}", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text("$runningCount", fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
         }
         AnimatedVisibility(
@@ -7514,6 +7537,13 @@ private fun SubagentMonitor(subagents: List<SubagentStatus>, modifier: Modifier 
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
+                    if (subagents.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.ws_subagents_none),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     subagents.forEach { subagent ->
                         Column(
                             Modifier
@@ -7543,6 +7573,17 @@ private fun SubagentMonitor(subagents: List<SubagentStatus>, modifier: Modifier 
                                     MaterialTheme.colorScheme.primary
                                 },
                             )
+                            if (subagent.contextTokens > 0) {
+                                Text(
+                                    text = stringResource(
+                                        R.string.ws_context_usage,
+                                        formatTokenCount(subagent.contextTokens),
+                                        formatTokenCount(maxContextTokens),
+                                    ),
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
                         }
                     }
                 }
@@ -7550,13 +7591,21 @@ private fun SubagentMonitor(subagents: List<SubagentStatus>, modifier: Modifier 
         }
     }
     shown?.let { subagent ->
-        SubagentTranscriptDialog(subagent = subagent, onDismiss = { openCallId = null })
+        SubagentTranscriptDialog(
+            subagent = subagent,
+            maxContextTokens = maxContextTokens,
+            onDismiss = { openCallId = null },
+        )
     }
 }
 
 /** Scrollable thinking/reply transcript of one subagent, opened from the monitor. */
 @Composable
-private fun SubagentTranscriptDialog(subagent: SubagentStatus, onDismiss: () -> Unit) {
+private fun SubagentTranscriptDialog(
+    subagent: SubagentStatus,
+    maxContextTokens: Int,
+    onDismiss: () -> Unit,
+) {
     val clipboard = LocalClipboardManager.current
     val fullTranscript = subagent.entries.joinToString("\n\n") { entry ->
         "${entry.title}:\n${entry.detail}"
@@ -7579,6 +7628,18 @@ private fun SubagentTranscriptDialog(subagent: SubagentStatus, onDismiss: () -> 
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                if (subagent.contextTokens > 0) {
+                    Text(
+                        text = stringResource(
+                            R.string.ws_context_usage,
+                            NumberFormat.getIntegerInstance().format(subagent.contextTokens.toLong()),
+                            NumberFormat.getIntegerInstance().format(maxContextTokens.toLong()),
+                        ),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
                 if (subagent.entries.isEmpty()) {
                     Text(
                         stringResource(R.string.ws_subagent_transcript_empty),
@@ -7612,4 +7673,115 @@ private fun SubagentTranscriptDialog(subagent: SubagentStatus, onDismiss: () -> 
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) } },
     )
+}
+
+/** Compact token formatter for the floating gauges: 45k, 1.2M. */
+private fun formatTokenCount(tokens: Int): String = when {
+    tokens >= 1_000_000 -> "%.1fM".format(tokens / 1_000_000.0).replace(".0M", "M")
+    tokens >= 1_000 -> "%.1fk".format(tokens / 1_000.0).replace(".0k", "k")
+    else -> tokens.toString()
+}
+
+/**
+ * Floating context-window gauge: a circular progress badge with the fill
+ * percentage when minimized; tapping it expands to a linear bar with the exact
+ * current/max token counts for this conversation.
+ */
+@Composable
+private fun ContextGauge(usedTokens: Int, maxTokens: Int, modifier: Modifier = Modifier) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val fraction = if (maxTokens > 0) (usedTokens.toFloat() / maxTokens).coerceIn(0f, 1f) else 0f
+    val animated by animateFloatAsState(fraction, label = "contextGauge")
+    val percent = (animated * 100 + 0.5f).toInt()
+    val ringColor = when {
+        fraction > 0.9f -> MaterialTheme.colorScheme.error
+        fraction > 0.75f -> MaterialTheme.colorScheme.tertiary
+        else -> MaterialTheme.colorScheme.primary
+    }
+    Row(
+        modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Surface(
+            onClick = { expanded = !expanded },
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 2.dp,
+            shadowElevation = 4.dp,
+        ) {
+            Box(Modifier.size(46.dp).padding(4.dp), contentAlignment = Alignment.Center) {
+                val trackColor = MaterialTheme.colorScheme.outlineVariant
+                Canvas(Modifier.fillMaxSize()) {
+                    val stroke = 4.5.dp.toPx()
+                    val radius = (size.minDimension - stroke) / 2
+                    val center = Offset(size.width / 2f, size.height / 2f)
+                    drawCircle(
+                        color = trackColor,
+                        radius = radius,
+                        center = center,
+                        style = Stroke(width = stroke),
+                    )
+                    if (animated > 0f) {
+                        drawArc(
+                            color = ringColor,
+                            startAngle = -90f,
+                            sweepAngle = 360f * animated,
+                            useCenter = false,
+                            topLeft = Offset(center.x - radius, center.y - radius),
+                            size = Size(radius * 2f, radius * 2f),
+                            style = Stroke(width = stroke, cap = StrokeCap.Round),
+                        )
+                    }
+                }
+                Text(
+                    "$percent%",
+                    fontSize = if (percent >= 100) 10.sp else 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (fraction > 0.75f) ringColor else MaterialTheme.colorScheme.onSurface,
+                )
+            }
+        }
+        AnimatedVisibility(
+            visible = expanded,
+            enter = fadeIn() + expandHorizontally(),
+            exit = fadeOut() + shrinkHorizontally(),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                tonalElevation = 3.dp,
+                shadowElevation = 6.dp,
+                color = MaterialTheme.colorScheme.surface,
+            ) {
+                Column(
+                    modifier = Modifier
+                        .widthIn(max = 240.dp)
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.ws_context_title),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    LinearProgressIndicator(
+                        progress = { animated },
+                        modifier = Modifier.fillMaxWidth().height(8.dp),
+                        color = ringColor,
+                        trackColor = MaterialTheme.colorScheme.outlineVariant,
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.ws_context_usage,
+                            NumberFormat.getIntegerInstance().format(usedTokens.toLong()),
+                            NumberFormat.getIntegerInstance().format(maxTokens.toLong()),
+                        ),
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
 }

@@ -134,11 +134,12 @@
     <string name="st_harness_logs_clear">Clear logs</string>
     <string name="st_harness_logs_cleared">Harness logs cleared</string>
     <string name="st_harness_log_open_title">Harness log</string>
-    <string name="st_harness_log_copy">Copy log</string>
     <string name="st_harness_log_save">Save to device</string>
     <string name="st_harness_log_issues">%1$d notable messages</string>
     <string name="st_harness_log_full">Full transcript</string>
     <string name="st_harness_logs_download">Download all logs</string>
+    <string name="st_harness_log_copy_notable">Copy Notable</string>
+    <string name="st_harness_log_download_full">DL Full Log</string>
     <string name="st_harness_logs_saved">Log saved</string>
     <string name="st_harness_logs_save_failed">Could not save log</string>
     <string name="st_harness_log_missing">This log is no longer available.</string>

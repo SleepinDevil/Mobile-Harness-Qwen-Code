@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="ws_subagent_starting">Запуск…</string>
+    <string name="ws_context_title">Контекст</string>
+    <string name="ws_context_usage">%1$s из %2$s токенов</string>
+    <string name="ws_subagents_none">В этой задаче пока нет субагентов.</string>
     <string name="ws_subagents_title">Субагенты</string>
     <string name="ws_subagent_done">Готово</string>
     <string name="ws_subagent_thinking">Размышление</string>
