@@ -50,6 +50,7 @@ import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
@@ -198,6 +199,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.TextRange
@@ -4806,13 +4808,23 @@ private fun WorkspaceScreen(
             if (selectedTab == WorkspaceTab.CHAT && state.agentKind == AgentKind.QWEN_CODE) {
                 Column(
                     modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .padding(start = 12.dp, top = 8.dp, bottom = 8.dp),
+                        .align(Alignment.TopEnd)
+                        .padding(top = 8.dp, end = 12.dp)
+                        .animateContentSize(),
+                    horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     ContextGauge(
-                        usedTokens = state.contextUsedTokens,
-                        maxTokens = state.qwenContextWindowTokens,
+                        data = ContextGaugeData(
+                            used = state.contextUsedTokens,
+                            estimated = state.contextEstimatedTokens,
+                            max = state.qwenContextWindowTokens,
+                            prompt = state.contextPromptTokens,
+                            cached = state.contextCachedTokens,
+                            output = state.contextOutputTokens,
+                            sessionTotal = state.contextSessionTotalTokens,
+                            subagentTotal = state.subagents.sumOf { it.contextTokens },
+                        ),
                     )
                     if (state.qwenSubagentsEnabled && state.qwenMaxConcurrentSubagents >= 1) {
                         SubagentMonitor(
@@ -7497,23 +7509,6 @@ private fun SubagentMonitor(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Surface(
-            onClick = { expanded = !expanded },
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            tonalElevation = 2.dp,
-            shadowElevation = 4.dp,
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Icon(Icons.Filled.SmartToy, contentDescription = null, modifier = Modifier.size(16.dp))
-                Text("$runningCount", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            }
-        }
         AnimatedVisibility(
             visible = expanded,
             enter = fadeIn() + expandHorizontally(),
@@ -7587,6 +7582,23 @@ private fun SubagentMonitor(
                         }
                     }
                 }
+            }
+        }
+        Surface(
+            onClick = { expanded = !expanded },
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            tonalElevation = 2.dp,
+            shadowElevation = 4.dp,
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Icon(Icons.Filled.SmartToy, contentDescription = null, modifier = Modifier.size(16.dp))
+                Text("$runningCount", fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -7682,27 +7694,114 @@ private fun formatTokenCount(tokens: Int): String = when {
     else -> tokens.toString()
 }
 
+/** Display metrics for the floating context gauge; all values in tokens. */
+private data class ContextGaugeData(
+    val used: Int,
+    val estimated: Int,
+    val max: Int,
+    val prompt: Int,
+    val cached: Int,
+    val output: Int,
+    val sessionTotal: Int,
+    val subagentTotal: Int,
+)
+
+/**
+ * Gauge fill color: green under 50%, yellow 50-70%, orange 70-90%, red above,
+ * continuously blended between the band anchors for a fluid appearance.
+ */
+private fun contextGaugeColor(fraction: Float): Color = when {
+    fraction < 0.5f -> lerp(Color(0xFF43A047), Color(0xFFFDD835), fraction / 0.5f)
+    fraction < 0.7f -> lerp(Color(0xFFFDD835), Color(0xFFFB8C00), (fraction - 0.5f) / 0.2f)
+    fraction < 0.9f -> lerp(Color(0xFFFB8C00), Color(0xFFE53935), (fraction - 0.7f) / 0.2f)
+    else -> Color(0xFFE53935)
+}
+
 /**
  * Floating context-window gauge: a circular progress badge with the fill
  * percentage when minimized; tapping it expands to a linear bar with the exact
- * current/max token counts for this conversation.
+ * current/max token counts plus a prompt/generated, cached, session and
+ * subagent token breakdown for this conversation.
  */
 @Composable
-private fun ContextGauge(usedTokens: Int, maxTokens: Int, modifier: Modifier = Modifier) {
+private fun ContextGauge(data: ContextGaugeData, modifier: Modifier = Modifier) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    val fraction = if (maxTokens > 0) (usedTokens.toFloat() / maxTokens).coerceIn(0f, 1f) else 0f
+    val liveTokens = data.used + data.estimated
+    val fraction = if (data.max > 0) (liveTokens.toFloat() / data.max).coerceIn(0f, 1f) else 0f
     val animated by animateFloatAsState(fraction, label = "contextGauge")
     val percent = (animated * 100 + 0.5f).toInt()
-    val ringColor = when {
-        fraction > 0.9f -> MaterialTheme.colorScheme.error
-        fraction > 0.75f -> MaterialTheme.colorScheme.tertiary
-        else -> MaterialTheme.colorScheme.primary
-    }
+    val ringColor = contextGaugeColor(fraction)
     Row(
         modifier,
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
+        AnimatedVisibility(
+            visible = expanded,
+            enter = fadeIn() + expandHorizontally(),
+            exit = fadeOut() + shrinkHorizontally(),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                tonalElevation = 3.dp,
+                shadowElevation = 6.dp,
+                color = MaterialTheme.colorScheme.surface,
+            ) {
+                Column(
+                    modifier = Modifier
+                        .widthIn(max = 240.dp)
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.ws_context_title),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    LinearProgressIndicator(
+                        progress = { animated },
+                        modifier = Modifier.fillMaxWidth().height(8.dp),
+                        color = ringColor,
+                        trackColor = MaterialTheme.colorScheme.outlineVariant,
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.ws_context_usage,
+                            NumberFormat.getIntegerInstance().format(liveTokens.toLong()),
+                            NumberFormat.getIntegerInstance().format(data.max.toLong()),
+                        ),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = ringColor,
+                    )
+                    if (data.prompt > 0) {
+                        ContextBreakdownRow(
+                            stringResource(
+                                R.string.ws_context_prompt_output,
+                                formatTokenCount(data.prompt),
+                                formatTokenCount(data.output),
+                            ),
+                        )
+                    }
+                    if (data.cached > 0) {
+                        ContextBreakdownRow(
+                            stringResource(R.string.ws_context_cached, formatTokenCount(data.cached)),
+                        )
+                    }
+                    if (data.sessionTotal > 0) {
+                        ContextBreakdownRow(
+                            stringResource(R.string.ws_context_session_total, formatTokenCount(data.sessionTotal)),
+                        )
+                    }
+                    if (data.subagentTotal > 0) {
+                        ContextBreakdownRow(
+                            stringResource(R.string.ws_context_subagents_total, formatTokenCount(data.subagentTotal)),
+                        )
+                    }
+                }
+            }
+        }
         Surface(
             onClick = { expanded = !expanded },
             shape = CircleShape,
@@ -7738,50 +7837,18 @@ private fun ContextGauge(usedTokens: Int, maxTokens: Int, modifier: Modifier = M
                     "$percent%",
                     fontSize = if (percent >= 100) 10.sp else 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (fraction > 0.75f) ringColor else MaterialTheme.colorScheme.onSurface,
+                    color = ringColor,
                 )
             }
         }
-        AnimatedVisibility(
-            visible = expanded,
-            enter = fadeIn() + expandHorizontally(),
-            exit = fadeOut() + shrinkHorizontally(),
-        ) {
-            Surface(
-                shape = RoundedCornerShape(14.dp),
-                tonalElevation = 3.dp,
-                shadowElevation = 6.dp,
-                color = MaterialTheme.colorScheme.surface,
-            ) {
-                Column(
-                    modifier = Modifier
-                        .widthIn(max = 240.dp)
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.ws_context_title),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    LinearProgressIndicator(
-                        progress = { animated },
-                        modifier = Modifier.fillMaxWidth().height(8.dp),
-                        color = ringColor,
-                        trackColor = MaterialTheme.colorScheme.outlineVariant,
-                    )
-                    Text(
-                        text = stringResource(
-                            R.string.ws_context_usage,
-                            NumberFormat.getIntegerInstance().format(usedTokens.toLong()),
-                            NumberFormat.getIntegerInstance().format(maxTokens.toLong()),
-                        ),
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
     }
+}
+
+@Composable
+private fun ContextBreakdownRow(text: String) {
+    Text(
+        text = text,
+        fontSize = 11.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }

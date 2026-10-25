@@ -8,6 +8,7 @@ import com.jarves.mh.model.providerProtocolForAgent
 import com.jarves.mh.model.providersForAgent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.json.JSONObject
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -258,7 +259,7 @@ class QwenBridgeTest {
     }
 
     @Test
-    fun contextTokensSumPromptCacheAndCompletion() {
+    fun tokenUsageSplitsPromptCacheAndCompletion() {
         val message = JSONObject().put(
             "usage",
             JSONObject()
@@ -267,8 +268,14 @@ class QwenBridgeTest {
                 .put("cache_creation_input_tokens", 80)
                 .put("output_tokens", 45),
         )
-        assertEquals(3_645, qwenContextTokens(message))
-        assertEquals(0, qwenContextTokens(JSONObject()))
+        val usage = qwenTokenUsage(message)
+        assertNotNull(usage)
+        assertEquals(3_600, usage!!.promptTokens)
+        assertEquals(3_480, usage.cachedTokens)
+        assertEquals(45, usage.outputTokens)
+        assertEquals(3_645, usage.totalTokens)
+        assertNull(qwenTokenUsage(JSONObject()))
+        assertNull(qwenTokenUsage(JSONObject().put("usage", JSONObject())))
     }
 
     private fun qwenTestRoute() = QwenRoute(

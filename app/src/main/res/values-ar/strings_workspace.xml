@@ -4,6 +4,10 @@
     <string name="ws_context_title">السياق</string>
     <string name="ws_context_usage">%1$s من %2$s رمزًا</string>
     <string name="ws_subagents_none">لا يوجد وكلاء فرعيون في هذه المهمة بعد.</string>
+    <string name="ws_context_prompt_output">مطالبة %1$s · توليد %2$s</string>
+    <string name="ws_context_cached">مخبأ %1$s</string>
+    <string name="ws_context_session_total">إجمالي الجلسة %1$s</string>
+    <string name="ws_context_subagents_total">إجمالي الوكلاء الفرعيين %1$s</string>
     <string name="ws_subagents_title">‏وكلاء فرعيون</string>
     <string name="ws_subagent_done">‏تم</string>
     <string name="ws_subagent_thinking">‏تفكير</string>

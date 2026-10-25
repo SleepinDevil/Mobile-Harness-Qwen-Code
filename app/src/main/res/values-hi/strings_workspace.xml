@@ -4,6 +4,10 @@
     <string name="ws_context_title">संदर्भ</string>
     <string name="ws_context_usage">%2$s में से %1$s टोकन</string>
     <string name="ws_subagents_none">इस कार्य में अबी कोई सबएजेंट नहीं।</string>
+    <string name="ws_context_prompt_output">प्रॉम्प्ट %1$s · जनरेट %2$s</string>
+    <string name="ws_context_cached">कैश %1$s</string>
+    <string name="ws_context_session_total">इस सत्र कुल %1$s</string>
+    <string name="ws_context_subagents_total">सबएजेंट कुल %1$s</string>
     <string name="ws_subagents_title">सबएजेंट</string>
     <string name="ws_subagent_done">पूर्ण</string>
     <string name="ws_subagent_thinking">सोच</string>

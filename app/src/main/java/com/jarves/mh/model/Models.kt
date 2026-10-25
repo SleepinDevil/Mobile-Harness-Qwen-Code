@@ -377,8 +377,20 @@ sealed interface RuntimeEvent {
         val callId: String,
         val usedTokens: Int,
     ) : RuntimeEvent
-    /** Prompt+completion tokens of the most recent main-agent API call (context fill). */
-    data class ContextUsage(override val sessionId: String, val usedTokens: Int) : RuntimeEvent
+    /**
+     * Token accounting of the most recent main-agent API call (context fill):
+     * [promptTokens] includes cached parts, [cachedTokens] is the read+write
+     * cache split, [usedTokens] is the full prompt+completion context.
+     */
+    data class ContextUsage(
+        override val sessionId: String,
+        val usedTokens: Int,
+        val promptTokens: Int,
+        val cachedTokens: Int,
+        val outputTokens: Int,
+    ) : RuntimeEvent
+    /** Live estimate of tokens generated since the last real [ContextUsage]. */
+    data class ContextEstimate(override val sessionId: String, val generatedTokens: Int) : RuntimeEvent
     data class SessionCompleted(override val sessionId: String) : RuntimeEvent
     data class SessionFailed(override val sessionId: String, val reason: String) : RuntimeEvent
 }

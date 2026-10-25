@@ -71,6 +71,11 @@ class QwenRuntimeBridge(
     private var lastReasoningUpdateAt = 0L
     private var lastThinkingUpdateAt = 0L
     private var currentThinkingBlockId = 0L
+    private var generatedCharsSinceUsage = 0
+    private var lastEstimateEmittedTokens = 0
+    private val subagentUsageBase = ConcurrentHashMap<String, Int>()
+    private val subagentGenChars = ConcurrentHashMap<String, Int>()
+    private val subagentEstEmitted = ConcurrentHashMap<String, Int>()
 
     override suspend fun startSession(projectId: String, projectSlug: String, projectKind: ProjectKind, prompt: String, conversationHistory: List<ChatMessage>, provider: ProviderProfile): String = withContext(Dispatchers.IO + NonCancellable) {
         val sessionId = UUID.randomUUID().toString()
@@ -88,6 +93,11 @@ class QwenRuntimeBridge(
         lastReasoningUpdateAt = 0L
         lastThinkingUpdateAt = 0L
         currentThinkingBlockId = 0L
+        generatedCharsSinceUsage = 0
+        lastEstimateEmittedTokens = 0
+        subagentUsageBase.clear()
+        subagentGenChars.clear()
+        subagentEstEmitted.clear()
         streamedText.clear()
         streamedThinking.clear()
         eventBus.emit(RuntimeEvent.SessionStarted(sessionId))
@@ -401,14 +411,17 @@ class QwenRuntimeBridge(
                 val delta = json.optJSONObject("delta")
                 when (delta?.optString("type")) {
                     "thinking_delta" -> delta.optString("thinking").takeIf(String::isNotEmpty)?.let {
+                        generatedCharsSinceUsage += it.length
                         streamedThinking.append(it)
                         emitReasoningSummary(sessionId, streamedThinking.toString())
                     }
                     "text_delta", "" -> delta.optString("text").takeIf(String::isNotEmpty)?.let {
+                        generatedCharsSinceUsage += it.length
                         streamedText.append(it)
                         eventBus.emit(RuntimeEvent.AssistantDelta(sessionId, it))
                     }
                 }
+                maybeEmitContextEstimate(sessionId)
             }
             "content_block_stop" -> {
                 if (streamedThinking.isNotBlank()) {
@@ -443,9 +456,18 @@ class QwenRuntimeBridge(
                         "tool_use" -> emitToolStarted(sessionId, block)
                     }
                 }
-                val contextTokens = qwenContextTokens(message)
-                if (contextTokens > 0) {
-                    eventBus.emit(RuntimeEvent.ContextUsage(sessionId, contextTokens))
+                qwenTokenUsage(message)?.let { usage ->
+                    generatedCharsSinceUsage = 0
+                    lastEstimateEmittedTokens = 0
+                    eventBus.emit(
+                        RuntimeEvent.ContextUsage(
+                            sessionId,
+                            usage.totalTokens,
+                            usage.promptTokens,
+                            usage.cachedTokens,
+                            usage.outputTokens,
+                        ),
+                    )
                 }
                 streamedText.clear()
                 // Some providers omit the final `result` envelope. An assistant
@@ -495,6 +517,12 @@ class QwenRuntimeBridge(
      */
     private suspend fun consumeSubagentJsonEvent(sessionId: String, parentCallId: String, json: JSONObject) {
         when (json.optString("type")) {
+            "stream_event" -> json.optJSONObject("event")?.let { consumeSubagentJsonEvent(sessionId, parentCallId, it) }
+            "content_block_delta" -> {
+                val delta = json.optJSONObject("delta") ?: return
+                val text = delta.optString("text").ifEmpty { delta.optString("thinking") }
+                if (text.isNotEmpty()) maybeEmitSubagentEstimate(sessionId, parentCallId, text.length)
+            }
             "assistant" -> {
                 val message = json.optJSONObject("message") ?: return
                 val content = message.optJSONArray("content") ?: return
@@ -520,9 +548,11 @@ class QwenRuntimeBridge(
                         }
                     }
                 }
-                val contextTokens = qwenContextTokens(message)
-                if (contextTokens > 0) {
-                    eventBus.emit(RuntimeEvent.SubagentUsage(sessionId, parentCallId, contextTokens))
+                qwenTokenUsage(message)?.let { usage ->
+                    subagentUsageBase[parentCallId] = usage.promptTokens
+                    subagentGenChars.remove(parentCallId)
+                    subagentEstEmitted.remove(parentCallId)
+                    eventBus.emit(RuntimeEvent.SubagentUsage(sessionId, parentCallId, usage.totalTokens))
                 }
             }
             "user" -> {
@@ -540,6 +570,31 @@ class QwenRuntimeBridge(
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Emits a live token estimate while the model is generating: streamed chars
+     * since the last reported usage, throttled to >=50-token steps so the gauge
+     * ticks smoothly without flooding the UI; exact [RuntimeEvent.ContextUsage]
+     * replaces it the moment the call completes.
+     */
+    private suspend fun maybeEmitContextEstimate(sessionId: String) {
+        val estimate = generatedCharsSinceUsage / HISTORY_CHARACTERS_PER_CONTEXT_TOKEN
+        if (estimate >= lastEstimateEmittedTokens + 50) {
+            lastEstimateEmittedTokens = estimate
+            eventBus.emit(RuntimeEvent.ContextEstimate(sessionId, estimate))
+        }
+    }
+
+    /** Subagent counterpart: last call's prompt tokens plus streamed generation. */
+    private suspend fun maybeEmitSubagentEstimate(sessionId: String, callId: String, chars: Int) {
+        val base = subagentUsageBase[callId] ?: return
+        val totalChars = ((subagentGenChars[callId] ?: 0) + chars).also { subagentGenChars[callId] = it }
+        val estimate = base + totalChars / HISTORY_CHARACTERS_PER_CONTEXT_TOKEN
+        if (estimate >= (subagentEstEmitted[callId] ?: 0) + 50) {
+            subagentEstEmitted[callId] = estimate
+            eventBus.emit(RuntimeEvent.SubagentUsage(sessionId, callId, estimate))
         }
     }
 
@@ -1082,13 +1137,22 @@ internal fun qwenParentToolUseId(json: JSONObject): String? =
         null
     }
 
+/** One main-agent API call's token accounting, as reported by the provider. */
+internal data class QwenTokenUsage(val promptTokens: Int, val cachedTokens: Int, val outputTokens: Int) {
+    val totalTokens: Int get() = promptTokens + outputTokens
+}
+
 /**
- * Tokens occupying the model's context after one API call: the prompt
- * (fresh + cached + cache-write input) plus the completion it produced.
- * Returns 0 when the envelope carries no usage (provider did not report).
+ * Token accounting of one API call from its `usage`: prompt = fresh + cached +
+ * cache-write input tokens. Returns null when the envelope carries no usage
+ * (provider did not report).
  */
-internal fun qwenContextTokens(message: JSONObject): Int {
-    val usage = message.optJSONObject("usage") ?: return 0
-    return usage.optInt("input_tokens") + usage.optInt("cache_read_input_tokens") +
-        usage.optInt("cache_creation_input_tokens") + usage.optInt("output_tokens")
+internal fun qwenTokenUsage(message: JSONObject): QwenTokenUsage? {
+    val usage = message.optJSONObject("usage") ?: return null
+    val cacheRead = usage.optInt("cache_read_input_tokens")
+    val cacheWrite = usage.optInt("cache_creation_input_tokens")
+    val prompt = usage.optInt("input_tokens") + cacheRead + cacheWrite
+    val output = usage.optInt("output_tokens")
+    if (prompt == 0 && output == 0) return null
+    return QwenTokenUsage(prompt, cacheRead + cacheWrite, output)
 }

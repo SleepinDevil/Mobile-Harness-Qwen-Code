@@ -4,6 +4,10 @@
     <string name="ws_context_title">Contexto</string>
     <string name="ws_context_usage">%1$s de %2$s tokens</string>
     <string name="ws_subagents_none">Aún no hay subagentes en esta tarea.</string>
+    <string name="ws_context_prompt_output">Prompt %1$s · Generado %2$s</string>
+    <string name="ws_context_cached">Caché %1$s</string>
+    <string name="ws_context_session_total">Total de sesión %1$s</string>
+    <string name="ws_context_subagents_total">Subagentes — total %1$s</string>
     <string name="ws_subagents_title">Subagentes</string>
     <string name="ws_subagent_done">Hecho</string>
     <string name="ws_subagent_thinking">Pensamiento</string>

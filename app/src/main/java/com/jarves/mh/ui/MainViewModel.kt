@@ -394,8 +394,17 @@ data class AppUiState(
     val qwenAutoCompactPercent: Int = QwenRuntimeBridge.DEFAULT_AUTO_COMPACT_PERCENT,
     val qwenSubagentsEnabled: Boolean = QwenRuntimeBridge.DEFAULT_SUBAGENTS_ENABLED,
     val qwenMaxConcurrentSubagents: Int = QwenRuntimeBridge.DEFAULT_MAX_CONCURRENT_SUBAGENTS,
-    /** Prompt+completion tokens of the last Qwen API call (drives the context gauge). */
+    /** Token accounting of the latest Qwen API call (drives the context gauge). */
     val contextUsedTokens: Int = 0,
+    /** Tokens streamed since that call (live estimate until exact usage arrives). */
+    val contextEstimatedTokens: Int = 0,
+    val contextPromptTokens: Int = 0,
+    val contextCachedTokens: Int = 0,
+    val contextOutputTokens: Int = 0,
+    /** Cumulative prompt+completion tokens over all API calls of this chat. */
+    val contextSessionTotalTokens: Int = 0,
+    /** Chat the context counters above belong to; totals restart on a new chat. */
+    val contextSessionChatId: String? = null,
     val claudeMaxTurns: Int = ClaudeRuntimeBridge.DEFAULT_MAX_TURNS,
     val harnessLogs: List<RuntimeLogEntry> = emptyList(),
     val harnessLogContent: HarnessLogContent? = null,
@@ -5355,7 +5364,32 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     subagents = current.subagents.filterNot { it.callId == event.callId } +
                         SubagentStatus(callId = event.callId, description = event.description),
                 )
-                is RuntimeEvent.ContextUsage -> current.copy(contextUsedTokens = event.usedTokens)
+                is RuntimeEvent.ContextUsage -> {
+                    val sameChat = current.contextSessionChatId != null &&
+                        current.contextSessionChatId == current.activeChatId
+                    val base = if (sameChat) {
+                        current
+                    } else {
+                        current.copy(
+                            contextUsedTokens = 0,
+                            contextEstimatedTokens = 0,
+                            contextPromptTokens = 0,
+                            contextCachedTokens = 0,
+                            contextOutputTokens = 0,
+                            contextSessionTotalTokens = 0,
+                        )
+                    }
+                    base.copy(
+                        contextSessionChatId = current.activeChatId,
+                        contextUsedTokens = event.usedTokens,
+                        contextPromptTokens = event.promptTokens,
+                        contextCachedTokens = event.cachedTokens,
+                        contextOutputTokens = event.outputTokens,
+                        contextEstimatedTokens = 0,
+                        contextSessionTotalTokens = base.contextSessionTotalTokens + event.usedTokens,
+                    )
+                }
+                is RuntimeEvent.ContextEstimate -> current.copy(contextEstimatedTokens = event.generatedTokens)
                 is RuntimeEvent.SubagentUsage -> current.copy(
                     subagents = current.subagents.map { sub ->
                         if (sub.callId == event.callId) sub.copy(contextTokens = event.usedTokens) else sub
