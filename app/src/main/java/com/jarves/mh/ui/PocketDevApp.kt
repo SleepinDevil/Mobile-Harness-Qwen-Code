@@ -2602,6 +2602,7 @@ private fun RootScreenHost(
                     onSetHarnessQwenReasoningEffort = viewModel::setHarnessQwenReasoningEffort,
                     onSetHarnessQwenMaxToolCalls = viewModel::setHarnessQwenMaxToolCalls,
                     onSetHarnessQwenShellTimeoutMs = viewModel::setHarnessQwenShellTimeoutMs,
+                    onSetHarnessQwenMemory = viewModel::setHarnessQwenMemory,
                     onSetHarnessClaudeBashTimeoutMs = viewModel::setHarnessClaudeBashTimeoutMs,
                     onSetHarnessClaudeMaxThinkingTokens = viewModel::setHarnessClaudeMaxThinkingTokens,
                     onSetHarnessClaudeMaxOutputTokens = viewModel::setHarnessClaudeMaxOutputTokens,

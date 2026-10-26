@@ -139,4 +139,8 @@
     <string name="rt_update_version_mismatch">إصدار التحديث لا يطابق ملف البيان الخاص به</string>
     <string name="rt_update_signature_mismatch">التحديث غير موقّع بمفتاح توقيع التطبيق المثبّت</string>
     <string name="rt_api_http_public">يُسمح باستخدام http:// غير المشفّر فقط لعناوين الشبكة المحلية (مثل 192.168.x.x أو 10.x.x.x أو Tailscale أو .local). استخدم https:// لهذا الخادم.</string>
+    <string name="rt_qwen_finalizing_title">إنهاء خفي</string>
+    <string name="rt_qwen_finalizing_detail">لا مخرجات لمدة %1$d ثانية بعد انتهاء الإجابة؛ نفّذ Qwen Code عملًا خاصًا (مثل الذكرة التلقائية) قبل إغلاق الجلسة.</string>
+    <string name="rt_qwen_usage_title">رموز الجلسة</string>
+    <string name="rt_qwen_usage_detail">%1$d إدخال · %2$d إخراج · %3$d قراءة من الكاش خلال الجلسة</string>
 </resources>

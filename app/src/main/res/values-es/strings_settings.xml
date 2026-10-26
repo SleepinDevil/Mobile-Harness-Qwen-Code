@@ -118,6 +118,8 @@
     <string name="st_harness_qwen_compact_support">Resume la sesión cuando ocupe este porcentaje de la ventana de contexto.</string>
     <string name="st_harness_qwen_subagents">Subagentes</string>
     <string name="st_harness_qwen_subagents_support">Permite que Qwen Code delegue tareas secundarias en subagentes paralelos. Consume más memoria y llamadas; al desactivarlo las herramientas se eliminan por completo.</string>
+    <string name="st_harness_qwen_memory">Activar Memorias y Dreaming</string>
+    <string name="st_harness_qwen_memory_support">Las automemorias y los sueños automáticos acumulan contexto permanente y ejecutan llamadas ocultas al modelo tras cada respuesta. Son difíciles de revisar o gestionar en Qwen Code para móvil, así que vienen desactivados.</string>
     <string name="st_harness_qwen_max_subagents">Máx. subagentes simultáneos</string>
     <string name="st_harness_qwen_max_subagents_support">Límite de subagentes ejecutándose a la vez.</string>
     <string name="st_harness_title">Ajustes del agente</string>

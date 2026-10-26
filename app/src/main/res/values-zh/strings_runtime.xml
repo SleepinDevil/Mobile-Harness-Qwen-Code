@@ -139,4 +139,8 @@
     <string name="rt_update_version_mismatch">更新版本与其清单不一致</string>
     <string name="rt_update_signature_mismatch">更新未使用已安装应用的签名密钥签名</string>
     <string name="rt_api_http_public">未加密的 http:// 仅允许用于局域网地址（如 192.168.x.x、10.x.x.x、Tailscale 或 .local）。此服务器请使用 https://。</string>
+    <string name="rt_qwen_finalizing_title">隐藏收尾</string>
+    <string name="rt_qwen_finalizing_detail">回答结束后 %1$d 秒无输出：Qwen Code 在关闭会话前执行了私有收尾工作（如自动记忆）。</string>
+    <string name="rt_qwen_usage_title">本次会话 Token</string>
+    <string name="rt_qwen_usage_detail">整场会话共 %1$d 输入 · %2$d 输出 · %3$d 缓存命中</string>
 </resources>

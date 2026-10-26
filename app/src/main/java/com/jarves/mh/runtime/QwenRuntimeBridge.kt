@@ -48,6 +48,7 @@ class QwenRuntimeBridge(
     private val autoCompactPercent: () -> Int = { DEFAULT_AUTO_COMPACT_PERCENT },
     private val subagentsEnabled: () -> Boolean = { DEFAULT_SUBAGENTS_ENABLED },
     private val maxConcurrentSubagents: () -> Int = { DEFAULT_MAX_CONCURRENT_SUBAGENTS },
+    private val memoryEnabled: () -> Boolean = { DEFAULT_MEMORY_ENABLED },
     private val reasoningEffort: () -> Int = { 0 },
     private val maxToolCalls: () -> Int = { 0 },
     private val shellTimeoutMs: () -> Int = { 0 },
@@ -66,6 +67,8 @@ class QwenRuntimeBridge(
     @Volatile private var userStopRequested: Boolean = false
     @Volatile private var activeProjectSlug: String? = null
     @Volatile private var taskStartedAtElapsedRealtime: Long = 0L
+    /** Wall clock of the newest stdout envelope; the gap before `result` is hidden CLI work. */
+    @Volatile private var lastStdoutEnvelopeAt = 0L
     @Volatile private var lastForegroundProgressAt: Long = 0L
     @Volatile private var foregroundResultPosted: Boolean = false
     private val streamedText = StringBuilder()
@@ -93,6 +96,7 @@ class QwenRuntimeBridge(
         userStopRequested = false
         activeProjectSlug = projectSlug
         taskStartedAtElapsedRealtime = android.os.SystemClock.elapsedRealtime()
+        lastStdoutEnvelopeAt = taskStartedAtElapsedRealtime
         lastForegroundProgressAt = 0L
         foregroundResultPosted = false
         toolNames.clear()
@@ -400,6 +404,13 @@ class QwenRuntimeBridge(
         // with parent_tool_use_id. They must never complete the session, feed the
         // chat text, or count as the main agent's own assistant end_turn; only
         // their tool calls are surfaced as attributed progress rows.
+
+        // Stamp every stdout envelope: when `result` arrives after a long silence,
+        // the gap is CLI-private post-turn work (auto-memory extraction/dreaming)
+        // that streams nothing, and the chat deserves an explanation line.
+        val envelopeAtMs = android.os.SystemClock.elapsedRealtime()
+        val stdoutSilenceMs = (envelopeAtMs - lastStdoutEnvelopeAt).coerceAtLeast(0L)
+        lastStdoutEnvelopeAt = envelopeAtMs
         val parentCallId = qwenParentToolUseId(json)
         if (parentCallId != null) {
             consumeSubagentJsonEvent(sessionId, parentCallId, json)
@@ -532,6 +543,32 @@ class QwenRuntimeBridge(
                 if (json.optBoolean("is_error")) {
                     val message = json.optString("result").ifBlank { "Qwen Code reported an error" }
                     throw IllegalStateException(message)
+                }
+                // `result.usage` sums every call the CLI made, including the
+                // invisible post-turn ones; surface it so hidden cost is visible.
+                if (stdoutSilenceMs >= HIDDEN_FINALIZATION_WARN_MS) {
+                    eventBus.emit(
+                        RuntimeEvent.RuntimeLog(
+                            sessionId,
+                            AppStrings.get(context, R.string.rt_qwen_finalizing_title),
+                            AppStrings.get(context, R.string.rt_qwen_finalizing_detail, stdoutSilenceMs / 1000),
+                        ),
+                    )
+                }
+                qwenTokenUsage(json)?.let { usage ->
+                    eventBus.emit(
+                        RuntimeEvent.RuntimeLog(
+                            sessionId,
+                            AppStrings.get(context, R.string.rt_qwen_usage_title),
+                            AppStrings.get(
+                                context,
+                                R.string.rt_qwen_usage_detail,
+                                usage.promptTokens,
+                                usage.outputTokens,
+                                usage.cachedTokens,
+                            ),
+                        ),
+                    )
                 }
                 // The structured result is Qwen Code's authoritative terminal event.
                 // Update the UI immediately instead of waiting for a PRoot/Node
@@ -881,6 +918,7 @@ class QwenRuntimeBridge(
             subagentsEnabled = subagentsEnabled(),
             reasoningEffort = reasoningEffort(),
             maxToolCalls = maxToolCalls(),
+            memoryEnabled = memoryEnabled(),
             shellTimeoutMs = shellTimeoutMs(),
         )
         File(home, "settings.json").writeText(settings.toString(2))
@@ -1086,6 +1124,7 @@ class QwenRuntimeBridge(
         const val DEFAULT_CONTEXT_WINDOW_TOKENS = 0
         const val DEFAULT_AUTO_COMPACT_PERCENT = 85
         const val DEFAULT_SUBAGENTS_ENABLED = false
+        const val DEFAULT_MEMORY_ENABLED = false
         const val DEFAULT_MAX_CONCURRENT_SUBAGENTS = 10
     }
 }
@@ -1186,6 +1225,7 @@ internal fun qwenSettingsJson(
     reasoningEffort: Int = 0,
     maxToolCalls: Int = 0,
     shellTimeoutMs: Int = 0,
+    memoryEnabled: Boolean = false,
 ): JSONObject {
     val providerEntry = JSONObject()
         .put("id", route.model)
@@ -1234,6 +1274,15 @@ internal fun qwenSettingsJson(
             JSONObject().put("autoCompactThreshold", autoCompactPercent.coerceIn(5, 100) / 100.0),
         )
         .put("tools", toolsSettings)
+        // Qwen Code defaults managed auto-memory and auto-dream to true: they add
+        // private model calls after every turn plus an always-on memory corpus to
+        // each request. PocketDev opts out unless the user enables it in Settings.
+        .put(
+            "memory",
+            JSONObject()
+                .put("enableManagedAutoMemory", memoryEnabled)
+                .put("enableManagedAutoDream", memoryEnabled),
+        )
         .put("telemetry", JSONObject().put("enabled", false))
         .put("privacy", JSONObject().put("usageStatisticsEnabled", false))
         .put("experimental", JSONObject().put("cron", false).put("artifact", false))
@@ -1421,6 +1470,9 @@ private fun qwenSubagentDescription(description: String, type: String): String {
 private const val SUBAGENT_POLL_INTERVAL_MS = 1_000L
 private const val SUBAGENT_POLL_RECENTNESS_GRACE_MS = 30_000L
 private const val SUBAGENT_TRANSCRIPT_POLL_CAP_BYTES = 256 * 1024
+
+/** `result` arriving after this much stdout silence gets an explanation line. */
+private const val HIDDEN_FINALIZATION_WARN_MS = 10_000L
 
 /**
  * Character budget for the replayed chat history. Sessions are one-shot, so the

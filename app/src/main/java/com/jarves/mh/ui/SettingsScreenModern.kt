@@ -167,6 +167,7 @@ fun SettingsScreen(
     onSetHarnessQwenReasoningEffort: (Int) -> Unit = {},
     onSetHarnessQwenMaxToolCalls: (Int) -> Unit = {},
     onSetHarnessQwenShellTimeoutMs: (Int) -> Unit = {},
+    onSetHarnessQwenMemory: (Boolean) -> Unit = {},
     onSetHarnessClaudeBashTimeoutMs: (Int) -> Unit = {},
     onSetHarnessClaudeMaxThinkingTokens: (Int) -> Unit = {},
     onSetHarnessClaudeMaxOutputTokens: (Int) -> Unit = {},
@@ -677,6 +678,28 @@ fun SettingsScreen(
                         maxDigits = 7,
                         onCommit = onSetHarnessQwenShellTimeoutMs,
                     )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.st_harness_qwen_memory),
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                text = stringResource(R.string.st_harness_qwen_memory_support),
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = state.qwenMemoryEnabled,
+                            onCheckedChange = onSetHarnessQwenMemory,
+                        )
+                    }
                     }
                     HarnessSubSection(
                         title = AgentKind.CLAUDE_CODE.localizedTitle(),

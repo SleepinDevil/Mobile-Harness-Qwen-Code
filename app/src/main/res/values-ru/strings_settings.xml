@@ -118,6 +118,8 @@
     <string name="st_harness_qwen_compact_support">Свернуть сессию в подытог, когда она займет эту долю контекста.</string>
     <string name="st_harness_qwen_subagents">Субагенты</string>
     <string name="st_harness_qwen_subagents_support">Разрешить Qwen Code поручать параллельные задачи субагентам. Требует больше памяти и запросов; при выключении инструменты полностью удаляются.</string>
+    <string name="st_harness_qwen_memory">Включить память и сны (dreaming)</string>
+    <string name="st_harness_qwen_memory_support">Автопамять и «сны» наращивают постоянный контекст и выполняют скрытые запросы к модели после каждого ответа; на мобильном Qwen Code их трудно просматривать и контролировать, поэтому по умолчанию они выключены.</string>
     <string name="st_harness_qwen_max_subagents">Макс. параллельных субагентов</string>
     <string name="st_harness_qwen_max_subagents_support">Предел одновременно работающих субагентов.</string>
     <string name="st_harness_title">Настройки агентов</string>

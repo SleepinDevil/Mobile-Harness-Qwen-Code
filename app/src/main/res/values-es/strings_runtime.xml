@@ -139,4 +139,8 @@
     <string name="rt_update_version_mismatch">La versión de la actualización no coincide con su manifiesto</string>
     <string name="rt_update_signature_mismatch">La actualización no está firmada con la clave de firma de la app instalada</string>
     <string name="rt_api_http_public">http:// sin cifrar solo se permite para direcciones de la red local (como 192.168.x.x, 10.x.x.x, Tailscale o .local). Usa https:// para este servidor.</string>
+    <string name="rt_qwen_finalizing_title">Finalización oculta</string>
+    <string name="rt_qwen_finalizing_detail">Sin salida durante %1$d s tras la respuesta; Qwen Code ejecutó trabajo privado (p. ej. automemoria) antes de cerrar la sesión.</string>
+    <string name="rt_qwen_usage_title">Tokens de la sesión</string>
+    <string name="rt_qwen_usage_detail">%1$d de entrada · %2$d de salida · %3$d de caché en toda la sesión</string>
 </resources>

@@ -118,6 +118,8 @@
     <string name="st_harness_qwen_compact_support">Summarize the session once it fills this share of the context window.</string>
     <string name="st_harness_qwen_subagents">Subagents</string>
     <string name="st_harness_qwen_subagents_support">Let Qwen Code delegate side tasks to parallel subagents. Uses more memory and model calls; when off the tools are removed entirely.</string>
+    <string name="st_harness_qwen_memory">Enable Memories and Dreaming</string>
+    <string name="st_harness_qwen_memory_support">Auto-memories and auto-dreams grow an always-on context and run hidden model calls after every answer. They are hard to inspect or manage on the mobile Qwen Code runtime, so they stay off by default.</string>
     <string name="st_harness_qwen_max_subagents">Max concurrent subagents</string>
     <string name="st_harness_qwen_max_subagents_support">Cap on subagents running at the same time.</string>
     <string name="st_harness_title">Harness settings</string>

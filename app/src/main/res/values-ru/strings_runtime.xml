@@ -139,4 +139,8 @@
     <string name="rt_update_version_mismatch">Версия обновления не совпадает с манифестом</string>
     <string name="rt_update_signature_mismatch">Обновление не подписано ключом установленного приложения</string>
     <string name="rt_api_http_public">Незашифрованный http:// разрешён только для адресов локальной сети (например, 192.168.x.x, 10.x.x.x, Tailscale или .local). Для этого сервера используйте https://.</string>
+    <string name="rt_qwen_finalizing_title">Скрытое завершение</string>
+    <string name="rt_qwen_finalizing_detail">Нет вывода %1$d с после ответа: Qwen Code выполнял скрытые действия (например, автопамять) перед закрытием сессии.</string>
+    <string name="rt_qwen_usage_title">Токены сессии</string>
+    <string name="rt_qwen_usage_detail">за всю сессию: %1$d вход · %2$d выход · %3$d кэш</string>
 </resources>

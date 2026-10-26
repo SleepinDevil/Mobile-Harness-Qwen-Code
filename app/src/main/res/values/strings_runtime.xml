@@ -139,4 +139,8 @@
     <string name="rt_update_version_mismatch">Update version does not match its manifest</string>
     <string name="rt_update_signature_mismatch">Update is not signed with the installed app\'s signing key</string>
     <string name="rt_api_http_public">Plain http:// is only allowed for local network addresses (like 192.168.x.x, 10.x.x.x, Tailscale or .local). Use https:// for this server.</string>
+    <string name="rt_qwen_finalizing_title">Hidden finalization</string>
+    <string name="rt_qwen_finalizing_detail">No output for %1$d s after the answer finished; Qwen Code ran private post-turn work (e.g. auto-memory) before closing the session.</string>
+    <string name="rt_qwen_usage_title">Session tokens</string>
+    <string name="rt_qwen_usage_detail">%1$d input · %2$d output · %3$d cache-read across the whole session</string>
 </resources>

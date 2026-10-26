@@ -396,6 +396,8 @@ data class AppUiState(
     val qwenAutoCompactPercent: Int = QwenRuntimeBridge.DEFAULT_AUTO_COMPACT_PERCENT,
     val qwenSubagentsEnabled: Boolean = QwenRuntimeBridge.DEFAULT_SUBAGENTS_ENABLED,
     val qwenMaxConcurrentSubagents: Int = QwenRuntimeBridge.DEFAULT_MAX_CONCURRENT_SUBAGENTS,
+    /** Qwen Code managed auto-memory + auto-dream; off by default (context bloat, hidden calls). */
+    val qwenMemoryEnabled: Boolean = QwenRuntimeBridge.DEFAULT_MEMORY_ENABLED,
     /** Picker indices into QWEN_REASONING_EFFORTS; 0 omits model.reasoningEffort. */
     val qwenReasoningEffort: Int = 0,
     /** Cumulative per-run tool-call budget; 0 leaves Qwen's unlimited default. */
@@ -481,6 +483,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         autoCompactPercent = { _state.value.qwenAutoCompactPercent },
         subagentsEnabled = { _state.value.qwenSubagentsEnabled },
         maxConcurrentSubagents = { _state.value.qwenMaxConcurrentSubagents },
+        memoryEnabled = { _state.value.qwenMemoryEnabled },
         reasoningEffort = { effectiveReasoningValue(activeChatReasoningOverride(), _state.value.qwenReasoningEffort) },
         maxToolCalls = { _state.value.qwenMaxToolCalls },
         shellTimeoutMs = { _state.value.qwenShellTimeoutMs },
@@ -570,6 +573,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             qwenAutoCompactPercent = preferences.agentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_AUTO_COMPACT, QwenRuntimeBridge.DEFAULT_AUTO_COMPACT_PERCENT),
             qwenSubagentsEnabled = preferences.agentFlag(AgentKind.QWEN_CODE, HARNESS_FLAG_SUBAGENTS, QwenRuntimeBridge.DEFAULT_SUBAGENTS_ENABLED),
             qwenMaxConcurrentSubagents = preferences.agentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_MAX_SUBAGENTS, QwenRuntimeBridge.DEFAULT_MAX_CONCURRENT_SUBAGENTS),
+            qwenMemoryEnabled = preferences.agentFlag(AgentKind.QWEN_CODE, HARNESS_FLAG_MEMORY, QwenRuntimeBridge.DEFAULT_MEMORY_ENABLED),
             claudeMaxTurns = preferences.agentLimit(AgentKind.CLAUDE_CODE, HARNESS_LIMIT_TURNS, ClaudeRuntimeBridge.DEFAULT_MAX_TURNS),
             qwenReasoningEffort = preferences.agentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_REASONING_EFFORT, 0),
             qwenMaxToolCalls = preferences.agentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_MAX_TOOL_CALLS, 0),
@@ -1048,6 +1052,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _state.update { it.copy(qwenSubagentsEnabled = enabled) }
     }
 
+    fun setHarnessQwenMemory(enabled: Boolean) {
+        preferences.setAgentFlag(AgentKind.QWEN_CODE, HARNESS_FLAG_MEMORY, enabled)
+        _state.update { it.copy(qwenMemoryEnabled = enabled) }
+    }
+
     fun setHarnessQwenMaxSubagents(count: Int) {
         val clamped = count.coerceIn(1, 50)
         preferences.setAgentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_MAX_SUBAGENTS, clamped)
@@ -1123,6 +1132,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         preferences.setAgentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_AUTO_COMPACT, QwenRuntimeBridge.DEFAULT_AUTO_COMPACT_PERCENT)
         preferences.setAgentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_MAX_SUBAGENTS, QwenRuntimeBridge.DEFAULT_MAX_CONCURRENT_SUBAGENTS)
         preferences.setAgentFlag(AgentKind.QWEN_CODE, HARNESS_FLAG_SUBAGENTS, QwenRuntimeBridge.DEFAULT_SUBAGENTS_ENABLED)
+        preferences.setAgentFlag(AgentKind.QWEN_CODE, HARNESS_FLAG_MEMORY, QwenRuntimeBridge.DEFAULT_MEMORY_ENABLED)
         preferences.setAgentLimit(AgentKind.CLAUDE_CODE, HARNESS_LIMIT_TURNS, ClaudeRuntimeBridge.DEFAULT_MAX_TURNS)
         preferences.setAgentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_REASONING_EFFORT, 0)
         preferences.setAgentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_MAX_TOOL_CALLS, 0)
@@ -1141,6 +1151,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 qwenAutoCompactPercent = QwenRuntimeBridge.DEFAULT_AUTO_COMPACT_PERCENT,
                 qwenMaxConcurrentSubagents = QwenRuntimeBridge.DEFAULT_MAX_CONCURRENT_SUBAGENTS,
                 qwenSubagentsEnabled = QwenRuntimeBridge.DEFAULT_SUBAGENTS_ENABLED,
+                qwenMemoryEnabled = QwenRuntimeBridge.DEFAULT_MEMORY_ENABLED,
                 claudeMaxTurns = ClaudeRuntimeBridge.DEFAULT_MAX_TURNS,
                 qwenReasoningEffort = 0,
                 qwenMaxToolCalls = 0,
@@ -5943,6 +5954,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private const val HARNESS_LIMIT_AUTO_COMPACT = "auto_compact_percent"
         private const val HARNESS_LIMIT_MAX_SUBAGENTS = "max_subagents"
         private const val HARNESS_FLAG_SUBAGENTS = "subagents_enabled"
+        private const val HARNESS_FLAG_MEMORY = "memory_enabled"
         private const val HARNESS_LIMIT_REASONING_EFFORT = "reasoning_effort"
         private const val HARNESS_LIMIT_MAX_TOOL_CALLS = "max_tool_calls"
         private const val HARNESS_LIMIT_SHELL_TIMEOUT_MS = "shell_timeout_ms"

@@ -232,6 +232,35 @@ class QwenBridgeTest {
     }
 
     @Test
+    fun settingsJsonDisablesManagedMemoryByDefault() {
+        val settings = qwenSettingsJson(
+            route = qwenTestRoute(),
+            maxSessionTurns = 25,
+            contextWindowTokens = 0,
+            autoCompactPercent = 85,
+            subagentsEnabled = false,
+        )
+        val memory = settings.getJSONObject("memory")
+        assertFalse(memory.getBoolean("enableManagedAutoMemory"))
+        assertFalse(memory.getBoolean("enableManagedAutoDream"))
+    }
+
+    @Test
+    fun settingsJsonEnablesManagedMemoryWhenOptedIn() {
+        val settings = qwenSettingsJson(
+            route = qwenTestRoute(),
+            maxSessionTurns = 25,
+            contextWindowTokens = 0,
+            autoCompactPercent = 85,
+            subagentsEnabled = false,
+            memoryEnabled = true,
+        )
+        val memory = settings.getJSONObject("memory")
+        assertTrue(memory.getBoolean("enableManagedAutoMemory"))
+        assertTrue(memory.getBoolean("enableManagedAutoDream"))
+    }
+
+    @Test
     fun launchEnvironmentCapsSubagentsOnlyWhenEnabled() {
         val disabled = qwenLaunchEnvironment("OPENAI_API_KEY", "secret", false, 10)
         assertFalse(disabled.containsKey("QWEN_CODE_MAX_BACKGROUND_AGENTS"))

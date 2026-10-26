@@ -118,6 +118,8 @@
     <string name="st_harness_qwen_compact_support">जब सत्र संदर्भ विंडो का इतना हिस्सा भर दे तो उसे सारांशित करें।</string>
     <string name="st_harness_qwen_subagents">सबएजेंट</string>
     <string name="st_harness_qwen_subagents_support">Qwen Code को सहायक कार्य समांतर सबएजेंटों को सौंपने दें। अधिक मेमोरी और मॉडल कॉल लगाते हैं; बंद होने पर टूल पूरी तरह हट जाते हैं।</string>
+    <string name="st_harness_qwen_memory">मेमोरी और ड्रीमिंग सक्षम करें</string>
+    <string name="st_harness_qwen_memory_support">ऑटो-मेमोरी और ऑटो-ड्रीम हमेशा मौजूद संदर्भ बढ़ाते हैं और हर उत्तर के बाद अदृश्य मॉडल कॉल चलाते हैं। मोबाइल Qwen Code में इन्हें जाँचना या प्रबंधित करना कठिन है, इसलिए ये डिफ़ॉल्ट रूप से बंद रहते हैं।</string>
     <string name="st_harness_qwen_max_subagents">अधिकतम समांतर सबएजेंट</string>
     <string name="st_harness_qwen_max_subagents_support">एक साथ चलने वाले सबएजेंटों की अधिकतम संख्या।</string>
     <string name="st_harness_title">हार्नेस सेटिंग्स</string>

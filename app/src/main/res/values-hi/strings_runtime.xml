@@ -139,4 +139,8 @@
     <string name="rt_update_version_mismatch">अपडेट संस्करण उसके मैनिफ़ेस्ट से मेल नहीं खाता</string>
     <string name="rt_update_signature_mismatch">अपडेट इंस्टॉल ऐप की साइनिंग कुंजी से साइन नहीं है</string>
     <string name="rt_api_http_public">सादा http:// केवल लोकल नेटवर्क पतों (जैसे 192.168.x.x, 10.x.x.x, Tailscale या .local) के लिए अनुमत है। इस सर्वर के लिए https:// का उपयोग करें।</string>
+    <string name="rt_qwen_finalizing_title">अदृश्य फ़ाइल-अप</string>
+    <string name="rt_qwen_finalizing_detail">उत्तर के बाद %1$d s तक कोई आउटपुट नहीं; सत्र बंद करने से पहले Qwen Code ने अदृश्य पश्च-कार्य किया (जैसे ऑटो-मेमोरी)।</string>
+    <string name="rt_qwen_usage_title">सत्र के टोकन</string>
+    <string name="rt_qwen_usage_detail">पूरे सत्र में: %1$d इनपुट · %2$d आउटपुट · %3$d कैश-रीड</string>
 </resources>

@@ -118,6 +118,8 @@
     <string name="st_harness_qwen_compact_support">会话占满上下文窗口此比例后自动总结。</string>
     <string name="st_harness_qwen_subagents">子代理</string>
     <string name="st_harness_qwen_subagents_support">允许 Qwen Code 将旁路任务委派给并行子代理。更耗内存和模型调用；关闭时相关工具会被完全移除。</string>
+    <string name="st_harness_qwen_memory">启用记忆与 Dreaming</string>
+    <string name="st_harness_qwen_memory_support">自动记忆与自动 Dream 会累积常驻上下文，并在每次回答后产生隐藏的模型调用；在手机的 Qwen Code 中难以查看和管理，默认保持关闭。</string>
     <string name="st_harness_qwen_max_subagents">最大并发子代理数</string>
     <string name="st_harness_qwen_max_subagents_support">同时运行的子代理数量上限。</string>
     <string name="st_harness_title">智能体设置</string>
