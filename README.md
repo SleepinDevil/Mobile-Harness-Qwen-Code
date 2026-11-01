@@ -37,7 +37,7 @@
 > - **Run-log triage** — raw harness logs per run with download, "copy notable issues", and clear actions
 > - **Greek translations** for all fork-added strings, and self-sufficient releases: APKs, runtime bundles, and in-app updates all served from this repo
 >
-> Everything upstream ships (through v1.0.10, including backup & restore) is included and kept in sync.
+> Everything upstream ships (through v1.0.10, including backup & restore) is included and kept in sync. Release versions deliberately always match upstream's version. Fork-side work-in-progress ships separately on the **rolling debug channel**: the [`debug-rolling`](https://github.com/SleepinDevil/Mobile-Harness-Qwen-Code/releases/tag/debug-rolling) prerelease (`mobile-harness-online-debug.apk`) is signed with the same key as the releases — so it installs straight over them — carries its own high `90000000+n` version series, and debug builds auto-update from `mobile-harness-update-debug.json` on that tag. Build one with `./gradlew :app:assembleOnlineDebug -PappVersionCode=90000002 -PappVersionName=1.0.10-dbg2` (upload-signing env loaded) and replace the tag's assets.
 
 <br />
 
