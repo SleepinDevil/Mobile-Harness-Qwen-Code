@@ -28,9 +28,9 @@ val hasUploadSigning = listOf(
 // Bundles are mirrored on this fork (upstream runtime-2026.09.4 lacks the
 // Qwen bundle); identical filenames/sha256, see dist/runtime-bundles/manifest.json.
 val runtimeReleaseBaseUrl =
-    "https://github.com/SleepinDevil/Mobile-Harness/releases/download/runtime-2026.09.4"
+    "https://github.com/SleepinDevil/Mobile-Harness-Qwen-Code/releases/download/runtime-2026.09.4"
 val appUpdateManifestUrl =
-    "https://github.com/techjarves/Mobile-Harness/releases/latest/download/mobile-harness-update.json"
+    "https://github.com/SleepinDevil/Mobile-Harness-Qwen-Code/releases/latest/download/mobile-harness-update.json"
 val runtimeBundleDir = rootProject.layout.projectDirectory.dir("dist/runtime-bundles")
 val generatedRuntimeAssets = layout.buildDirectory.dir("generated/runtime-assets")
 
@@ -46,7 +46,7 @@ val prepareOfflineRuntimeAssets = tasks.register<Sync>("prepareOfflineRuntimeAss
         runtimeBundleDir.file("pocketdev-python-arm64-2026.09.2.tar.zst"),
         runtimeBundleDir.file("pocketdev-android-arm64-2026.09.1.tar.zst"),
         runtimeBundleDir.file("pocketdev-dsh-arm64-2026.09.1.tar.zst"),
-        runtimeBundleDir.file("pocketdev-qwen-arm64-2026.09.1.tar.zst"),
+        runtimeBundleDir.file("pocketdev-qwen-arm64-2026.11.1.tar.zst"),
     )
     into(generatedRuntimeAssets.map { it.dir("offline/runtime") })
 }
