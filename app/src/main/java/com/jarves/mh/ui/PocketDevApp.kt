@@ -4133,7 +4133,6 @@ private fun ProjectsScreen(
         val total = state.appUpdateTotalBytes
         val downloaded = state.appUpdateDownloadedBytes
         val progress = if (total > 0) (downloaded.toFloat() / total).coerceIn(0f, 1f) else 0f
-        val releasesPageUrl = BuildConfig.APP_UPDATE_MANIFEST_URL.substringBefore("/releases/") + "/releases"
         AlertDialog(
             onDismissRequest = { if (!installing) showUpdateDialog = false },
             icon = { Icon(Icons.Default.Download, null, tint = PocketOrange, modifier = Modifier.size(34.dp)) },
@@ -4191,38 +4190,27 @@ private fun ProjectsScreen(
                                     )
                                 }
                                 if (isTarget && installing) Text(stringResource(R.string.ws_update_verified_installing), color = PocketGreen, fontSize = 13.sp)
-                                if (update.requiresUninstall) {
-                                    Row(verticalAlignment = Alignment.Top) {
-                                        Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(stringResource(R.string.ws_update_uninstall_note), fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
-                                    }
-                                    OutlinedButton(
-                                        onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(releasesPageUrl))) },
-                                    ) { Text(stringResource(R.string.ws_update_open_releases)) }
-                                } else {
-                                    Button(
-                                        enabled = !downloading && !installing,
-                                        onClick = {
-                                            if (!canInstall && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                                pendingPermissionUpdate = update
-                                                permissionLauncher.launch(
-                                                    Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}")),
-                                                )
-                                            } else {
-                                                onInstallUpdate(update)
-                                            }
+                                Button(
+                                    enabled = !downloading && !installing,
+                                    onClick = {
+                                        if (!canInstall && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                            pendingPermissionUpdate = update
+                                            permissionLauncher.launch(
+                                                Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}")),
+                                            )
+                                        } else {
+                                            onInstallUpdate(update)
+                                        }
+                                    },
+                                ) {
+                                    Text(
+                                        when {
+                                            !canInstall -> stringResource(R.string.ws_grant_permission)
+                                            isTarget && downloading -> stringResource(R.string.ws_downloading_ellipsis)
+                                            isTarget && installing -> stringResource(R.string.tools_installing)
+                                            else -> stringResource(R.string.ws_download_and_install)
                                         },
-                                    ) {
-                                        Text(
-                                            when {
-                                                !canInstall -> stringResource(R.string.ws_grant_permission)
-                                                isTarget && downloading -> stringResource(R.string.ws_downloading_ellipsis)
-                                                isTarget && installing -> stringResource(R.string.tools_installing)
-                                                else -> stringResource(R.string.ws_download_and_install)
-                                            },
-                                        )
-                                    }
+                                    )
                                 }
                             }
                         }

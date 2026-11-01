@@ -4,6 +4,11 @@ import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
+/**
+ * Bucket scheme: stable = upstream code x 10000 (110000, 120000, ...);
+ * betas for a release live strictly between it and the next stable
+ * (110001..119999). Every offer just needs to be numerically newer.
+ */
 class AppUpdateOffersTest {
     private fun manifest(versionCode: Long, versionName: String, variant: String = "online"): String =
         JSONObject()
@@ -22,71 +27,73 @@ class AppUpdateOffersTest {
             )
             .toString()
 
-    private fun offers(stable: String?, debug: String?, installedCode: Long, installedBase: Long) =
-        appUpdateOffers(stable, debug, "online", installedCode, installedBase)
+    private fun offers(stable: String?, debug: String?, installedCode: Long) =
+        appUpdateOffers(stable, debug, "online", installedCode)
 
     @Test
     fun stableBuildSeesNoStableOfferForItsOwnVersion() {
-        val result = offers(manifest(11, "1.0.10"), debug = null, installedCode = 11, installedBase = 11)
+        val result = offers(manifest(110000, "1.0.10"), debug = null, installedCode = 110000)
         assert(result.isEmpty())
     }
 
     @Test
-    fun stableBuildSeesNewerStableAsInstallable() {
-        val result = offers(manifest(12, "1.0.11"), debug = null, installedCode = 11, installedBase = 11)
+    fun stableBuildSeesNewerStableAsOffer() {
+        val result = offers(manifest(120000, "1.0.11"), debug = null, installedCode = 110000)
         assertEquals(1, result.size)
         assertEquals(AppUpdateChannel.STABLE, result.single().channel)
-        assert(!result.single().requiresUninstall)
     }
 
     @Test
-    fun stableBuildCanInstallDebugBetaDirectly() {
-        val result = offers(manifest(11, "1.0.10"), manifest(90000001, "1.0.10-dbg1"), installedCode = 11, installedBase = 11)
+    fun stableBuildCanJoinNewerBeta() {
+        val result = offers(manifest(110000, "1.0.10"), manifest(110005, "1.0.10-dbg5"), installedCode = 110000)
         assertEquals(1, result.size)
         assertEquals(AppUpdateChannel.DEBUG, result.single().channel)
-        assert(!result.single().requiresUninstall)
     }
 
     @Test
-    fun debugBuildIgnoresStableOfItsOwnBase() {
-        val result = offers(manifest(11, "1.0.10"), debug = null, installedCode = 90000001, installedBase = 11)
-        assert(result.isEmpty())
+    fun betaBuildSeesOnlyNewerBetaWithinItsBucket() {
+        val result = offers(stable = null, manifest(110006, "1.0.10-dbg6"), installedCode = 110005)
+        assertEquals(1, result.size)
+        assertEquals(AppUpdateChannel.DEBUG, result.single().channel)
     }
 
     @Test
-    fun debugBuildSeesNewerBetaAndNewerStableWithUninstallWarning() {
-        // Upstream moved to 1.0.11 (code 12) while the debug series advanced to dbg6.
+    fun betaBuildIgnoresStaleOrEqualBeta() {
+        assert(offers(stable = null, manifest(110005, "1.0.10-dbg5"), installedCode = 110005).isEmpty())
+        assert(offers(stable = null, manifest(110003, "1.0.10-dbg3"), installedCode = 110005).isEmpty())
+    }
+
+    @Test
+    fun betaToNextStableIsANumericUpgrade() {
+        // The user's scenario: on beta 5, stable 1.0.11 (120000) and beta 6
+        // (110006) appear side by side; both install in place, newest first.
         val result = offers(
-            manifest(12, "1.0.11"),
-            manifest(90000006, "1.0.10-dbg6"),
-            installedCode = 90000005,
-            installedBase = 11,
+            manifest(120000, "1.0.11"),
+            manifest(110006, "1.0.10-dbg6"),
+            installedCode = 110005,
         )
         assertEquals(2, result.size)
-        // Installable debug update first; stable switch (a downgrade Android
-        // refuses in place) last and flagged for uninstall.
-        assertEquals(AppUpdateChannel.DEBUG, result[0].channel)
-        assert(!result[0].requiresUninstall)
-        assertEquals(AppUpdateChannel.STABLE, result[1].channel)
-        assert(result[1].requiresUninstall)
+        assertEquals(AppUpdateChannel.STABLE, result[0].channel)
+        assertEquals(120000L, result[0].versionCode)
+        assertEquals(AppUpdateChannel.DEBUG, result[1].channel)
     }
 
     @Test
-    fun debugBuildSeesNoStaleBetaOffer() {
-        val result = offers(stable = null, manifest(90000001, "1.0.10-dbg1"), installedCode = 90000001, installedBase = 11)
+    fun stableBuildIgnoresBetaOfAPastBucket() {
+        val result = offers(stable = null, manifest(110003, "1.0.10-dbg3"), installedCode = 120000)
         assert(result.isEmpty())
     }
 
     @Test
     fun manifestWithoutVariantArtifactYieldsNoOffer() {
-        val onlyOffline = manifest(12, "1.0.11", variant = "offline")
-        val result = offers(onlyOffline, debug = null, installedCode = 11, installedBase = 11)
+        val onlyOffline = manifest(120000, "1.0.11", variant = "offline")
+        val result = offers(onlyOffline, debug = null, installedCode = 110000)
         assert(result.isEmpty())
     }
 
     @Test
     fun malformedManifestYieldsNoOffer() {
-        val result = offers("{not json", debug = null, installedCode = 11, installedBase = 11)
+        val result = offers("{not json", debug = null, installedCode = 110000)
         assert(result.isEmpty())
     }
 }

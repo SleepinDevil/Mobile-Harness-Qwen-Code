@@ -24,42 +24,29 @@ data class AppUpdateInfo(
     val sha256: String,
     val sizeBytes: Long,
     val notes: String,
-    /**
-     * True when the offer's versionCode cannot replace the installed build
-     * (stable codes below the debug series), so the user must uninstall —
-     * wiping app data — before installing it. The in-app installer can never
-     * sidestep Android's downgrade block.
-     */
-    val requiresUninstall: Boolean,
 )
 
 /**
  * Parses one channel manifest and turns it into an offer relative to the
  * installed build, or null when there is nothing to offer.
  *
- * Series rules: release versionCodes stay locked to upstream and debug builds
- * live in a separate high series (90000000+n). A STABLE manifest therefore
- * compares against [installedStableCode] — the upstream release the installed
- * build was cut from (equal to [installedCode] for release builds) — so a
- * debug build only hears about stable updates once upstream moves. A DEBUG
- * manifest compares codes numerically: any debug-series code is above every
- * release code, and debug codes rise monotonically across rebases.
+ * Version-code buckets: stable releases use upstream's versionCode times
+ * 10,000 (upstream 11 -> 110000), and rolling debug betas for a release live
+ * strictly between it and the next stable (110001..119999, then 120000).
+ * Every direction — stable to beta, beta to beta, beta to the next
+ * stable — is therefore a numeric upgrade, so one rule suffices for both
+ * feeds: offer the manifest when its versionCode exceeds the installed one.
+ * Equality (the build already installed) is suppressed by the same rule.
  */
 internal fun parseAppUpdateManifest(
     body: String,
     channel: AppUpdateChannel,
     variant: String,
     installedCode: Long,
-    installedStableCode: Long,
 ): AppUpdateInfo? {
     val root = runCatching { JSONObject(body) }.getOrNull() ?: return null
     val versionCode = root.optLong("versionCode")
-    if (versionCode <= 0L) return null
-    if (channel == AppUpdateChannel.STABLE) {
-        if (versionCode <= installedStableCode || versionCode == installedCode) return null
-    } else if (versionCode <= installedCode) {
-        return null
-    }
+    if (versionCode <= installedCode) return null
     val artifact = root.optJSONObject("artifacts")?.optJSONObject(variant)
         ?: root.optJSONObject(variant)
         ?: root
@@ -73,24 +60,22 @@ internal fun parseAppUpdateManifest(
         sha256 = artifact.optString("sha256").lowercase(),
         sizeBytes = artifact.optLong("sizeBytes", -1L),
         notes = root.optString("notes"),
-        requiresUninstall = versionCode <= installedCode,
     )
 }
 
 /**
- * Merges both channel feeds into user-facing offers: installable updates
- * first (highest versionCode wins), entries needing an uninstall last.
+ * Merges both channel feeds into user-facing offers, highest versionCode
+ * first. Both feeds always compare numerically against the installed code.
  */
 internal fun appUpdateOffers(
     stableBody: String?,
     debugBody: String?,
     variant: String,
     installedCode: Long,
-    installedStableCode: Long,
 ): List<AppUpdateInfo> = listOfNotNull(
-    stableBody?.let { parseAppUpdateManifest(it, AppUpdateChannel.STABLE, variant, installedCode, installedStableCode) },
-    debugBody?.let { parseAppUpdateManifest(it, AppUpdateChannel.DEBUG, variant, installedCode, installedStableCode) },
-).sortedWith(compareBy<AppUpdateInfo> { it.requiresUninstall }.thenByDescending { it.versionCode })
+    stableBody?.let { parseAppUpdateManifest(it, AppUpdateChannel.STABLE, variant, installedCode) },
+    debugBody?.let { parseAppUpdateManifest(it, AppUpdateChannel.DEBUG, variant, installedCode) },
+).sortedByDescending { it.versionCode }
 
 class AppUpdater(
     private val context: Context,
@@ -112,7 +97,6 @@ class AppUpdater(
         debugBody = fetch(BuildConfig.APP_UPDATE_DEBUG_MANIFEST_URL),
         variant = BuildConfig.APP_VARIANT,
         installedCode = BuildConfig.VERSION_CODE.toLong(),
-        installedStableCode = BuildConfig.STABLE_BASE_VERSION_CODE,
     )
 
     private fun fetch(manifestUrl: String): String? {

@@ -60,8 +60,6 @@
     <string name="ws_update_channel_stable">Σταθερή</string>
     <string name="ws_update_channel_beta">Δοκιμαστική debug</string>
     <string name="ws_update_options_count">%1$d επιλογές ενημέρωσης</string>
-    <string name="ws_update_uninstall_note">Η επιστροφή από δοκιμαστική έκδοση debug στη σταθερή απαιτεί πρώτα απεγκατάσταση, η οποία διαγράφει όλα τα δεδομένα της εφαρμογής. Εξάγετε αντίγραφο ασφαλείας στις Ρυθμίσεις, κάντε απεγκατάσταση και εγκαταστήστε το σταθερό APK από τη σελίδα εκδόσεων του GitHub.</string>
-    <string name="ws_update_open_releases">Άνοιγμα σελίδας εκδόσεων</string>
     <string name="ws_update">Ενημέρωση</string>
     <string name="ws_create_starter_project">Δημιουργία έργου εκκίνησης</string>
     <string name="ws_project_name">Όνομα έργου</string>

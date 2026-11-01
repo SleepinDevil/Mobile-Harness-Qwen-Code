@@ -83,8 +83,6 @@
     <string name="ws_update_channel_stable">مستقرة</string>
     <string name="ws_update_channel_beta">نسخة تجريبية للتنقيح</string>
     <string name="ws_update_options_count">%1$d خيارات للتحديث</string>
-    <string name="ws_update_uninstall_note">تتطلب العودة من نسخة تجريبية للتنقيح إلى الإصدار المستقر إلغاء التثبيت أولًا، ما يمحو كل بيانات التطبيق. صدّر نسخة احتياطية من الإعدادات، ثم ألغِ التثبيت وثبّت ملف APK المستقر من صفحة الإصدارات على GitHub.</string>
-    <string name="ws_update_open_releases">فتح صفحة الإصدارات</string>
     <string name="ws_update">تحديث</string>
     <string name="ws_create_starter_project">إنشاء مشروع مبدئي</string>
     <string name="ws_project_name">اسم المشروع</string>

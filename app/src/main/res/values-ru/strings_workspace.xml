@@ -83,8 +83,6 @@
     <string name="ws_update_channel_stable">Стабильная</string>
     <string name="ws_update_channel_beta">Бета-отладка</string>
     <string name="ws_update_options_count">Вариантов обновления: %1$d</string>
-    <string name="ws_update_uninstall_note">Переход с отладочной беты на стабильную версию требует предварительного удаления приложения, что сотрёт все данные. Экспортируйте резервную копию в настройках, удалите приложение, затем установите стабильный APK со страницы релизов GitHub.</string>
-    <string name="ws_update_open_releases">Открыть страницу релизов</string>
     <string name="ws_update">Обновить</string>
     <string name="ws_create_starter_project">Создать стартовый проект</string>
     <string name="ws_project_name">Название проекта</string>

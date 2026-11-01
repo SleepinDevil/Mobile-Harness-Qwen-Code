@@ -2630,10 +2630,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun debugUpdateManifestUrl(): String = if (BuildConfig.DEBUG) preferences.debugUpdateManifestUrl else ""
 
     fun installAppUpdate(info: AppUpdateInfo) {
-        // Offers Android could never replace in place (stable below the debug
-        // series) are surfaced as guidance rows; the UI must not start a
-        // download for them.
-        if (info.requiresUninstall) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !getApplication<Application>().packageManager.canRequestPackageInstalls()) {
             _state.update { it.copy(appUpdateTarget = info, appUpdateStatus = AppUpdateStatus.PERMISSION_REQUIRED) }
             return

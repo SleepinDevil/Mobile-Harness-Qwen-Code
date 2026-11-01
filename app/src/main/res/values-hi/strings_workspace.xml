@@ -83,8 +83,6 @@
     <string name="ws_update_channel_stable">स्थिर</string>
     <string name="ws_update_channel_beta">डिबग बीटा</string>
     <string name="ws_update_options_count">%1$d अपडेट विकल्प</string>
-    <string name="ws_update_uninstall_note">डिबग बीटा से स्थिर संस्करण पर लौटने के लिए पहले एप हटाना ज़रूरी है, जिससे सभी ऐप डेटा मिट जाएगा। सेटिंग्स से बैकअप निर्यात करें, एप हटाएँ, फिर GitHub रिलीज़ पृष्ठ से स्थिर APK इंस्टॉल करें।</string>
-    <string name="ws_update_open_releases">रिलीज़ पृष्ठ खोलें</string>
     <string name="ws_update">अपडेट करें</string>
     <string name="ws_create_starter_project">एक स्टार्टर प्रोजेक्ट बनाएं</string>
     <string name="ws_project_name">प्रोजेक्ट का नाम</string>

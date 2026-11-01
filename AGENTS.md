@@ -26,7 +26,7 @@ Flow: **Compose UI → `MainViewModel` → `RuntimeBridge` → `RuntimeInstaller
 
 ### Critical invariants (do not break)
 
-1. `targetSdk = if (playBuild) 36 else 28` and **literal** `versionCode`/`versionName` in `app/build.gradle.kts` (F-Droid static manifest parser).
+1. `targetSdk = if (playBuild) 36 else 28` and **literal** `versionCode`/`versionName` in `app/build.gradle.kts` (F-Droid static manifest parser). `versionCode` = upstream's code × 10,000 (upstream 11 → `110000`; bump by exactly 10,000 per upstream release); rolling debug betas take `+1…9999` inside the current bucket via `-PappVersionCode`, so stable/beta transitions are always upgrades.
 2. arm64-only assumptions end-to-end (abiFilters, CMake guard, bundles, `RuntimeCompatibility`).
 3. NDK ≥ 28 default + 16 KiB page linker flag on every native target (NDK 26 output crashes on 16 KiB-page devices).
 4. Carrier-`.so` copy + `useLegacyPackaging` + `androidResources.noCompress += "zst"`.

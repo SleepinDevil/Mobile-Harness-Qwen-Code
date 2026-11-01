@@ -83,8 +83,6 @@
     <string name="ws_update_channel_stable">Stable</string>
     <string name="ws_update_channel_beta">Debug beta</string>
     <string name="ws_update_options_count">%1$d update options</string>
-    <string name="ws_update_uninstall_note">Switching from a debug beta back to a stable release requires uninstalling first, which deletes all app data. Export a backup from Settings, uninstall, then install the stable APK from the GitHub releases page.</string>
-    <string name="ws_update_open_releases">Open releases page</string>
     <string name="ws_update">Update</string>
     <string name="ws_create_starter_project">Create a starter project</string>
     <string name="ws_project_name">Project name</string>

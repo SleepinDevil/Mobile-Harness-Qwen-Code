@@ -83,8 +83,6 @@
     <string name="ws_update_channel_stable">正式版</string>
     <string name="ws_update_channel_beta">调试测试版</string>
     <string name="ws_update_options_count">有 %1$d 个更新选项</string>
-    <string name="ws_update_uninstall_note">从调试测试版切换回正式版需要先卸载应用，这会删除所有应用数据。请先在设置中导出备份，卸载后从 GitHub 发布页安装正式版 APK。</string>
-    <string name="ws_update_open_releases">打开发布页</string>
     <string name="ws_update">更新</string>
     <string name="ws_create_starter_project">创建入门项目</string>
     <string name="ws_project_name">项目名称</string>

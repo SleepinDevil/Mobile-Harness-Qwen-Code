@@ -37,10 +37,6 @@ val appUpdateManifestUrl =
 // upstream-locked release versions.
 val appUpdateManifestUrlDebug =
     "https://github.com/SleepinDevil/Mobile-Harness-Qwen-Code/releases/download/debug-rolling/mobile-harness-update-debug.json"
-// Upstream release this tree tracks; keep in lockstep with the literal
-// versionCode below. Debug rolling builds override versionCode into the
-// 90000000+n series but still compare stable updates against this base.
-val stableBaseVersionCode = 11
 val runtimeBundleDir = rootProject.layout.projectDirectory.dir("dist/runtime-bundles")
 val generatedRuntimeAssets = layout.buildDirectory.dir("generated/runtime-assets")
 
@@ -97,7 +93,13 @@ android {
         targetSdk = if (playBuild) 36 else 28
         // Keep literal defaults so F-Droid's static manifest parser can detect
         // the tagged release. Gradle properties may still override Play builds.
-        versionCode = 11
+        // Version-code buckets: this is upstream's versionCode (11) times
+        // 10,000. Rolling debug betas for this release live strictly between
+        // this code and the next stable (upstream 12 -> 120000), i.e.
+        // 110001..119999 via -PappVersionCode, so every stable/beta transition
+        // is an in-place Android upgrade. Bump by exactly 10,000 per upstream
+        // release.
+        versionCode = 110000
         versionName = "1.0.10"
         providers.gradleProperty("appVersionCode").orNull?.toIntOrNull()?.let { versionCode = it }
         providers.gradleProperty("appVersionName").orNull?.let { versionName = it }
@@ -109,7 +111,6 @@ android {
 
         buildConfigField("boolean", "IS_PLAY_BUILD", playBuild.toString())
         buildConfigField("String", "APP_UPDATE_DEBUG_MANIFEST_URL", buildConfigString(appUpdateManifestUrlDebug))
-        buildConfigField("long", "STABLE_BASE_VERSION_CODE", "${stableBaseVersionCode}L")
         buildConfigField("String", "PRIVACY_POLICY_URL", buildConfigString(privacyPolicyUrl))
 
         buildConfigField(
