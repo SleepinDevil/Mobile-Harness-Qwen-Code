@@ -128,7 +128,7 @@ class QwenBridgeTest {
         assertTrue(ProviderKind.LLM_ROUTER in providers)
         assertTrue(ProviderKind.DEEPSEEK in providers)
         assertTrue(ProviderKind.KIMI in providers)
-        assertTrue(ProviderKind.OPENCODE_ZEN in providers)
+        assertFalse(ProviderKind.OPENCODE_ZEN in providers)
         assertTrue(ProviderKind.NVIDIA_NIM in providers)
         assertTrue(ProviderKind.CUSTOM in providers)
     }

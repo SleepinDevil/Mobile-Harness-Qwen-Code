@@ -154,7 +154,9 @@ fun providersForAgent(agent: AgentKind): List<ProviderKind> = when (agent) {
     AgentKind.ANTIGRAVITY -> emptyList()
     // Qwen Code speaks OpenAI and Anthropic wire formats natively; only the
     // Claude subscription login has no key-based equivalent to fall back on.
-    AgentKind.QWEN_CODE -> ProviderKind.entries.filterNot { it == ProviderKind.CLAUDE }
+    AgentKind.QWEN_CODE -> ProviderKind.entries.filterNot {
+        it == ProviderKind.CLAUDE || it == ProviderKind.OPENCODE_ZEN
+    }
 }
 
 data class ProviderProfile(
