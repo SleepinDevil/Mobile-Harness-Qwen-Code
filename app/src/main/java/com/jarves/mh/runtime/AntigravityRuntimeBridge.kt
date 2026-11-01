@@ -408,7 +408,11 @@ class AntigravityRuntimeBridge(
                                 eventBus.emit(RuntimeEvent.AssistantDelta(sessionId, event.response))
                             }
                             resultSeen = true
-                        } else throw AntigravitySessionException(friendlyError(event.error ?: event.status))
+                        } else {
+                            val error = event.error ?: event.status
+                            if (isStaleAntigravityConversation(error)) saveConversationId(projectId, "")
+                            throw AntigravitySessionException(friendlyError(error))
+                        }
                     }
                     null -> Unit
                 }
@@ -473,6 +477,11 @@ class AntigravityRuntimeBridge(
             finishForegroundRuntime(true, projectSlug, AppStrings.get(context, R.string.rt_bridge_finished_in, "Antigravity", projectSlug))
         }.onFailure {
             val diagnostic = recentAntigravityDiagnostic(sessionStartedAtMillis)
+            // A conversation whose project agy no longer knows fails every
+            // resume; forget it so the next message starts a new conversation.
+            if (isStaleAntigravityConversation("${it.message.orEmpty()} $diagnostic")) {
+                saveConversationId(projectId, "")
+            }
             val message = if (userStopRequested) {
                 "Stopped by user"
             } else {
@@ -652,6 +661,8 @@ internal fun antigravityFriendlyError(raw: String, diagnostic: String = ""): Str
             value.contains("not signed in", true) ||
             value.contains("not logged in", true) ->
             "Antigravity needs Google sign-in. Open Settings → Coding agent."
+        isStaleAntigravityConversation(value) ->
+            "The previous Antigravity conversation is no longer available. Send your message again to start a new one."
         value.contains("out of credits", true) || value.contains("quota", true) ->
             "Your Antigravity account is out of credits. Check the account plan or wait for credits to reset."
         value.contains("timed out", true) || value.contains("timeout", true) ->
@@ -662,6 +673,19 @@ internal fun antigravityFriendlyError(raw: String, diagnostic: String = ""): Str
         else -> raw.replace(Regex("\\s+"), " ").trim().take(500)
     }
 }
+
+/**
+ * agy already ignores a --conversation ID it cannot find and starts fresh, so
+ * only the errors it cannot recover from by itself are matched here.
+ */
+internal fun isStaleAntigravityConversation(value: String): Boolean =
+    ANTIGRAVITY_STALE_CONVERSATION_ERRORS.any { value.contains(it, ignoreCase = true) }
+
+private val ANTIGRAVITY_STALE_CONVERSATION_ERRORS = listOf(
+    "project associated with this conversation is no longer valid",
+    "references unknown project",
+    "trajectory not found for conversation",
+)
 
 private val ANTIGRAVITY_NETWORK_ERRORS = listOf(
     "dial tcp",

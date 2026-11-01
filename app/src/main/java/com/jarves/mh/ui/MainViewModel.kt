@@ -2694,6 +2694,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _state.update { it.copy(onboardingComplete = true, startupStage = StartupStage.READY) }
     }
 
+    /** Finishes first run without a provider so it can be configured later from Settings. */
+    fun skipOnboarding() {
+        preferences.onboardingComplete = true
+        _state.update { it.copy(onboardingComplete = true, startupStage = StartupStage.READY) }
+    }
+
     /** Lets first-run users escape a provider/login failure without losing saved credentials. */
     fun chooseOnboardingAgent(kind: AgentKind) {
         selectAgent(kind)
@@ -3375,6 +3381,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     toastMessage = when {
                         it.isRunning -> str(R.string.vm_task_continues_background)
                         it.androidBuildRunning -> str(R.string.an_build_continues_background)
+                        projectTerminalStopRequested -> null
                         else -> str(R.string.vm_terminal_continues_background)
                     },
                 )
@@ -3882,8 +3889,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                                             githubUserCode = code,
                                             githubVerificationUri = GITHUB_DEVICE_URL,
                                             githubMessage = str(R.string.vm_github_enter_code),
+                                            toastMessage = str(R.string.vm_github_code_copied, code),
                                         )
                                     }
+                                    // The browser covers the dialog, so put the code on the clipboard
+                                    // and give the user a moment to see it before GitHub asks for it.
+                                    copyToClipboard("GitHub code", code)
+                                    delay(1_500)
                                     openExternalUrl(GITHUB_DEVICE_URL)
                                 }
                             } else {
@@ -4081,6 +4093,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
         return repositories.values.toList()
+    }
+
+    private fun copyToClipboard(label: String, text: String) {
+        runCatching {
+            val clipboard = getApplication<Application>().getSystemService(android.content.ClipboardManager::class.java)
+            clipboard.setPrimaryClip(android.content.ClipData.newPlainText(label, text))
+        }
     }
 
     private fun openExternalUrl(url: String) {
@@ -4907,6 +4926,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 var suffix = 2
                 while (destination.exists()) destination = File(parent, "$stem-${suffix++}$extension")
                 var copied = 0L
+                // Uploads stream straight to disk, so the only real limit is free storage.
+                val uploadLimit = (parent.usableSpace * 8L / 10L).coerceAtMost(MAX_UPLOAD_BYTES)
+                val uploadLimitText = android.text.format.Formatter.formatShortFileSize(getApplication(), uploadLimit)
                 try {
                     resolver.openInputStream(uri)?.buffered()?.use { input ->
                         destination.outputStream().buffered().use { output ->
@@ -4915,7 +4937,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                                 val count = input.read(buffer)
                                 if (count < 0) break
                                 copied += count
-                                check(copied <= MAX_UPLOAD_BYTES) { str(R.string.fm_too_large, displayName) }
+                                check(copied <= uploadLimit) { str(R.string.fm_too_large, displayName, uploadLimitText) }
                                 output.write(buffer, 0, count)
                             }
                         }
@@ -5982,7 +6004,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private const val MAX_ATTACHMENTS_PER_MESSAGE = 5
         private const val MAX_PROCESS_OUTPUT_BYTES = 512 * 1024
         private const val MAX_ATTACHMENT_BYTES = 25L * 1024L * 1024L
-        private const val MAX_UPLOAD_BYTES = 100L * 1024L * 1024L
+        private const val MAX_UPLOAD_BYTES = 8L * 1024L * 1024L * 1024L
         private const val MAX_IMPORTED_PROJECT_BYTES = 8L * 1024L * 1024L * 1024L
         private const val MAX_IMPORTED_ZIP_ENTRIES = 100_000
         private const val LEGACY_GITHUB_TOKEN_KEY = "GITHUB_APP"
