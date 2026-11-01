@@ -2099,8 +2099,8 @@ printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decis
         private val CLAUDE_VERSION_PATTERN = Regex("[0-9]+\\.[0-9]+\\.[0-9]+")
         /** Pinned DeepSeek Harness release installed via npm inside the guest (verified 2026-09-06). */
         const val DSH_VERSION = "0.1.2-rc.1"
-        /** Pinned Qwen Code release shipped as a checksum-verified npm bundle (verified 2026-10-21). */
-        const val QWEN_VERSION = "0.25.3"
+        /** Pinned Qwen Code release shipped as a checksum-verified npm bundle (verified 2026-11-01). */
+        const val QWEN_VERSION = "0.26.5"
         const val QWEN_GUEST_PATH = "/usr/local/bin/qwen"
         private const val DSH_ANDROID_COMPATIBILITY_VERSION = "copyfile-excl-v1"
         private val CORE_BUNDLE = RuntimeBundle(
@@ -2143,9 +2143,9 @@ printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decis
         )
         private val QWEN_BUNDLE = RuntimeBundle(
             label = "Qwen Code",
-            fileName = "pocketdev-qwen-arm64-2026.09.1.tar.zst",
-            sha256 = "21ae0fd21366d32bc84e2fc47600521eb93ff44d4211deba12b97b04328c4e98",
-            compressedBytes = 25_711_015L,
+            fileName = "pocketdev-qwen-arm64-2026.11.1.tar.zst",
+            sha256 = "21438772efdacde19e12ea6f2525e65d17e7482d20b74582dd1a8961155a042a",
+            compressedBytes = 30_353_261L,
         )
         private const val MAX_TERMINAL_LINE = 500
         private const val MAX_COLLECTED_OUTPUT = 24_000

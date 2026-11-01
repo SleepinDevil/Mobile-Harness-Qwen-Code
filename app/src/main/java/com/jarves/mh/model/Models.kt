@@ -76,7 +76,7 @@ enum class AgentKind(
         "qwen-code",
         "Qwen Code",
         "Alibaba's open coding agent · API-key providers",
-        "24.5 MB",
+        "29.0 MB",
     ),
     ;
 

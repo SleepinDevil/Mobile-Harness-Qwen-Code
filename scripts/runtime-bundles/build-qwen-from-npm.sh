@@ -7,10 +7,10 @@ set -euo pipefail
 # audio-capture) are intentionally excluded: PRoot cannot load them and the
 # headless `-p` sessions PocketDev runs never use them. No npm or network
 # dependency resolution is required beyond this single signed tarball.
-VERSION="${POCKETDEV_QWEN_VERSION:-0.25.3}"
-BUNDLE_VERSION="${POCKETDEV_QWEN_BUNDLE_VERSION:-2026.09.1}"
+VERSION="${POCKETDEV_QWEN_VERSION:-0.26.5}"
+BUNDLE_VERSION="${POCKETDEV_QWEN_BUNDLE_VERSION:-2026.11.1}"
 # sha512 integrity reported by registry.npmjs.org for this exact tarball.
-INTEGRITY_SHA512_B64="oEQlxLRQHqIMO/zgE9CVqesZpJA6FrpiJMDLC8tl4c5ARicyYP4A5EfOK/F/6c6NXuVhLLNirloIGA+ivqZpiw=="
+INTEGRITY_SHA512_B64="iqcBqLQDmKvOtRcVvF78l7bf0NpdymGFBo0qNY0ausPezht+PLXkh15vnIILaBKtM4BabtHSv60xWftMomJ7hw=="
 ARCHIVE="pocketdev-qwen-arm64-${BUNDLE_VERSION}.tar.zst"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TARBALL="qwen-code-${VERSION}.tgz"

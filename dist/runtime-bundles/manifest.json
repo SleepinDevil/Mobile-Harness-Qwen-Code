@@ -78,13 +78,13 @@
       ]
     },
     "qwen": {
-      "version": "2026.09.1",
-      "file": "pocketdev-qwen-arm64-2026.09.1.tar.zst",
-      "sha256": "21ae0fd21366d32bc84e2fc47600521eb93ff44d4211deba12b97b04328c4e98",
-      "compressedBytes": 25711015,
-      "uncompressedBytes": 137246720,
+      "version": "2026.11.1",
+      "file": "pocketdev-qwen-arm64-2026.11.1.tar.zst",
+      "sha256": "21438772efdacde19e12ea6f2525e65d17e7482d20b74582dd1a8961155a042a",
+      "compressedBytes": 30353261,
+      "uncompressedBytes": 156528640,
       "includes": [
-        "Qwen Code 0.25.3",
+        "Qwen Code 0.26.5",
         "Version marker",
         "Launcher"
       ],
