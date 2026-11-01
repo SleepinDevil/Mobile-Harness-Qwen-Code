@@ -31,6 +31,12 @@ val runtimeReleaseBaseUrl =
     "https://github.com/SleepinDevil/Mobile-Harness-Qwen-Code/releases/download/runtime-2026.09.4"
 val appUpdateManifestUrl =
     "https://github.com/SleepinDevil/Mobile-Harness-Qwen-Code/releases/latest/download/mobile-harness-update.json"
+// Rolling debug channel: prerelease tag `debug-rolling` carries the newest
+// fork-built debug APK plus this manifest, whose versionCode lives in its own
+// high series (90000000+n) so debug builds update independently of the
+// upstream-locked release versions.
+val appUpdateManifestUrlDebug =
+    "https://github.com/SleepinDevil/Mobile-Harness-Qwen-Code/releases/download/debug-rolling/mobile-harness-update-debug.json"
 val runtimeBundleDir = rootProject.layout.projectDirectory.dir("dist/runtime-bundles")
 val generatedRuntimeAssets = layout.buildDirectory.dir("generated/runtime-assets")
 
@@ -130,6 +136,15 @@ android {
 
     buildTypes {
         debug {
+            // Sign debug builds with the same upload key as releases (when the
+            // key is available) so a fork debug APK installs straight over the
+            // release APK instead of failing on a signature mismatch. Machines
+            // without the key keep AGP's default debug keystore.
+            if (hasUploadSigning) {
+                signingConfig = signingConfigs.getByName("upload")
+            }
+            // Debug builds follow the rolling debug-rolling prerelease channel.
+            buildConfigField("String", "APP_UPDATE_MANIFEST_URL", buildConfigString(appUpdateManifestUrlDebug))
             buildConfigField(
                 "String",
                 "TEST_OPENROUTER_API_KEY",

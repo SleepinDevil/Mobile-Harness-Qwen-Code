@@ -274,6 +274,39 @@ class QwenBridgeTest {
     }
 
     @Test
+    fun usageFromOpenAiDialectDoesNotDoubleCountCachedTokens() {
+        // Verbatim envelope qwen-code 0.26.5 emits against an OpenAI-compatible
+        // backend for a 1000-token prompt with 900 cached tokens.
+        val message = JSONObject().put(
+            "usage",
+            JSONObject()
+                .put("input_tokens", 1000)
+                .put("output_tokens", 50)
+                .put("cache_read_input_tokens", 900)
+                .put("total_tokens", 1050),
+        )
+        val usage = qwenTokenUsage(message)!!
+        assertEquals(1000, usage.promptTokens)
+        assertEquals(900, usage.cachedTokens)
+        assertEquals(50, usage.outputTokens)
+    }
+
+    @Test
+    fun usageFromAnthropicDialectSumsCacheFields() {
+        val message = JSONObject().put(
+            "usage",
+            JSONObject()
+                .put("input_tokens", 100)
+                .put("output_tokens", 50)
+                .put("cache_creation_input_tokens", 200)
+                .put("cache_read_input_tokens", 300),
+        )
+        val usage = qwenTokenUsage(message)!!
+        assertEquals(600, usage.promptTokens)
+        assertEquals(500, usage.cachedTokens)
+    }
+
+    @Test
     fun launchEnvironmentCapsSubagentsOnlyWhenEnabled() {
         val disabled = qwenLaunchEnvironment("OPENAI_API_KEY", "secret", false, 10)
         assertFalse(disabled.containsKey("QWEN_CODE_MAX_BACKGROUND_AGENTS"))

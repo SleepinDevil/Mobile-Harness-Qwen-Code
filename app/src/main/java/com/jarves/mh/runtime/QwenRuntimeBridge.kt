@@ -1592,15 +1592,30 @@ internal data class QwenTokenUsage(val promptTokens: Int, val cachedTokens: Int,
 }
 
 /**
- * Token accounting of one API call from its `usage`: prompt = fresh + cached +
- * cache-write input tokens. Returns null when the envelope carries no usage
- * (provider did not report).
+ * Token accounting of one API call from its `usage`: prompt = total input tokens
+ * sent to the server, cached = the cached subset. Returns null when the envelope
+ * carries no usage (provider did not report).
+ *
+ * Two usage dialects reach the CLI: Anthropic-native reports `input_tokens`
+ * WITHOUT the cached tokens (they arrive in separate cache fields, so the sum
+ * is the true prompt), while every OpenAI-dialect backend — which is all the
+ * Qwen routes talk to — reports `input_tokens` INCLUDING the cached subset
+ * (verified against qwen-code 0.26.5 with an OpenAI-compatible mock). Adding
+ * the cached tokens a second time doubled the context gauge, so only the
+ * Anthropic dialect gets the summation. The dialect test mirrors the CLI's
+ * own `looksLikeOpenAi` heuristic: Anthropic messages always spell out
+ * `cache_creation_input_tokens`, OpenAI relays never do.
  */
 internal fun qwenTokenUsage(message: JSONObject): QwenTokenUsage? {
     val usage = message.optJSONObject("usage") ?: return null
     val cacheRead = usage.optInt("cache_read_input_tokens")
     val cacheWrite = usage.optInt("cache_creation_input_tokens")
-    val prompt = usage.optInt("input_tokens") + cacheRead + cacheWrite
+    val rawInput = usage.optInt("input_tokens")
+    val openAiDialect = !usage.has("cache_creation_input_tokens") &&
+        cacheWrite == 0 &&
+        cacheRead > 0 &&
+        rawInput >= cacheRead
+    val prompt = if (openAiDialect) rawInput else rawInput + cacheRead + cacheWrite
     val output = usage.optInt("output_tokens")
     if (prompt == 0 && output == 0) return null
     return QwenTokenUsage(prompt, cacheRead + cacheWrite, output)
