@@ -37,6 +37,10 @@ val appUpdateManifestUrl =
 // upstream-locked release versions.
 val appUpdateManifestUrlDebug =
     "https://github.com/SleepinDevil/Mobile-Harness-Qwen-Code/releases/download/debug-rolling/mobile-harness-update-debug.json"
+// Upstream release this tree tracks; keep in lockstep with the literal
+// versionCode below. Debug rolling builds override versionCode into the
+// 90000000+n series but still compare stable updates against this base.
+val stableBaseVersionCode = 11
 val runtimeBundleDir = rootProject.layout.projectDirectory.dir("dist/runtime-bundles")
 val generatedRuntimeAssets = layout.buildDirectory.dir("generated/runtime-assets")
 
@@ -104,6 +108,8 @@ android {
         vectorDrawables.useSupportLibrary = true
 
         buildConfigField("boolean", "IS_PLAY_BUILD", playBuild.toString())
+        buildConfigField("String", "APP_UPDATE_DEBUG_MANIFEST_URL", buildConfigString(appUpdateManifestUrlDebug))
+        buildConfigField("long", "STABLE_BASE_VERSION_CODE", "${stableBaseVersionCode}L")
         buildConfigField("String", "PRIVACY_POLICY_URL", buildConfigString(privacyPolicyUrl))
 
         buildConfigField(
@@ -143,8 +149,6 @@ android {
             if (hasUploadSigning) {
                 signingConfig = signingConfigs.getByName("upload")
             }
-            // Debug builds follow the rolling debug-rolling prerelease channel.
-            buildConfigField("String", "APP_UPDATE_MANIFEST_URL", buildConfigString(appUpdateManifestUrlDebug))
             buildConfigField(
                 "String",
                 "TEST_OPENROUTER_API_KEY",

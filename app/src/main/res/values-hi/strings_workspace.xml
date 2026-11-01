@@ -80,6 +80,11 @@
     <string name="ws_collapse">छोटा करें</string>
     <string name="ws_expand">बड़ा करें</string>
     <string name="ws_update_ready">एक नया अपडेट तैयार है</string>
+    <string name="ws_update_channel_stable">स्थिर</string>
+    <string name="ws_update_channel_beta">डिबग बीटा</string>
+    <string name="ws_update_options_count">%1$d अपडेट विकल्प</string>
+    <string name="ws_update_uninstall_note">डिबग बीटा से स्थिर संस्करण पर लौटने के लिए पहले एप हटाना ज़रूरी है, जिससे सभी ऐप डेटा मिट जाएगा। सेटिंग्स से बैकअप निर्यात करें, एप हटाएँ, फिर GitHub रिलीज़ पृष्ठ से स्थिर APK इंस्टॉल करें।</string>
+    <string name="ws_update_open_releases">रिलीज़ पृष्ठ खोलें</string>
     <string name="ws_update">अपडेट करें</string>
     <string name="ws_create_starter_project">एक स्टार्टर प्रोजेक्ट बनाएं</string>
     <string name="ws_project_name">प्रोजेक्ट का नाम</string>
@@ -103,7 +108,6 @@
     <string name="ws_disconnect">डिस्कनेक्ट करें</string>
     <string name="ws_update_to">%1$s पर अपडेट करें</string>
     <string name="ws_update_default_notes">Mobile Harness के नवीनतम सुधार और फ़िक्स पाएं।</string>
-    <string name="ws_update_download_size">डाउनलोड आकार: %1$s</string>
     <string name="ws_update_allow_unknown_apps">Mobile Harness के लिए ‘अज्ञात ऐप्स इंस्टॉल करें’ की अनुमति दें। इस अनुमति के बिना Android अपडेट इंस्टॉल नहीं करेगा।</string>
     <string name="ws_update_downloading_progress">डाउनलोड हो रहा है %1$s / %2$s · %3$d%%</string>
     <string name="ws_update_downloading">डाउनलोड हो रहा है %1$s</string>

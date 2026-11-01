@@ -441,7 +441,10 @@ data class AppUiState(
     val androidHealthChecks: List<AndroidHealthCheck> = emptyList(),
     val androidHealthRunning: Boolean = false,
     val androidLogcat: AndroidLogcatState = AndroidLogcatState(),
-    val appUpdate: AppUpdateInfo? = null,
+    /** Installable updates from the stable and debug-beta feeds; empty = up to date. */
+    val appUpdates: List<AppUpdateInfo> = emptyList(),
+    /** The offer currently being downloaded/installed (drives the matching row's progress). */
+    val appUpdateTarget: AppUpdateInfo? = null,
     val appUpdateStatus: AppUpdateStatus? = null,
     val appUpdateDownloadedBytes: Long = 0L,
     val appUpdateTotalBytes: Long = -1L,
@@ -2597,11 +2600,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun checkForAppUpdate(force: Boolean = false) {
         if (!force && System.currentTimeMillis() - preferences.lastAppUpdateCheckMillis < 24L * 60L * 60L * 1000L) return
         viewModelScope.launch(Dispatchers.IO) {
-            val update = runCatching { appUpdater().check() }.getOrNull()
+            val updates = runCatching { appUpdater().check() }.getOrDefault(emptyList())
             preferences.lastAppUpdateCheckMillis = System.currentTimeMillis()
-            if (update != null) {
+            if (updates.isNotEmpty()) {
                 _state.update {
-                    it.copy(appUpdate = update, appUpdateStatus = AppUpdateStatus.AVAILABLE, appUpdateError = null)
+                    it.copy(appUpdates = updates, appUpdateStatus = AppUpdateStatus.AVAILABLE, appUpdateError = null)
                 }
             }
         }
@@ -2626,15 +2629,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /** Debug builds only: the currently-active manifest URL override (empty = default). */
     fun debugUpdateManifestUrl(): String = if (BuildConfig.DEBUG) preferences.debugUpdateManifestUrl else ""
 
-    fun installAppUpdate() {
-        val info = _state.value.appUpdate ?: return
+    fun installAppUpdate(info: AppUpdateInfo) {
+        // Offers Android could never replace in place (stable below the debug
+        // series) are surfaced as guidance rows; the UI must not start a
+        // download for them.
+        if (info.requiresUninstall) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !getApplication<Application>().packageManager.canRequestPackageInstalls()) {
-            _state.update { it.copy(appUpdateStatus = AppUpdateStatus.PERMISSION_REQUIRED) }
+            _state.update { it.copy(appUpdateTarget = info, appUpdateStatus = AppUpdateStatus.PERMISSION_REQUIRED) }
             return
         }
         if (_state.value.appUpdateStatus == AppUpdateStatus.DOWNLOADING) return
         _state.update {
-            it.copy(appUpdateStatus = AppUpdateStatus.DOWNLOADING, appUpdateDownloadedBytes = 0L, appUpdateTotalBytes = info.sizeBytes, appUpdateError = null)
+            it.copy(appUpdateTarget = info, appUpdateStatus = AppUpdateStatus.DOWNLOADING, appUpdateDownloadedBytes = 0L, appUpdateTotalBytes = info.sizeBytes, appUpdateError = null)
         }
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {
@@ -2653,7 +2659,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun dismissAppUpdateError() {
-        _state.update { it.copy(appUpdateStatus = AppUpdateStatus.AVAILABLE, appUpdateError = null) }
+        _state.update { it.copy(appUpdateStatus = AppUpdateStatus.AVAILABLE, appUpdateError = null, appUpdateTarget = null) }
     }
 
     private fun mergeStartupLog(

@@ -80,6 +80,11 @@
     <string name="ws_collapse">Свернуть</string>
     <string name="ws_expand">Развернуть</string>
     <string name="ws_update_ready">Доступно новое обновление</string>
+    <string name="ws_update_channel_stable">Стабильная</string>
+    <string name="ws_update_channel_beta">Бета-отладка</string>
+    <string name="ws_update_options_count">Вариантов обновления: %1$d</string>
+    <string name="ws_update_uninstall_note">Переход с отладочной беты на стабильную версию требует предварительного удаления приложения, что сотрёт все данные. Экспортируйте резервную копию в настройках, удалите приложение, затем установите стабильный APK со страницы релизов GitHub.</string>
+    <string name="ws_update_open_releases">Открыть страницу релизов</string>
     <string name="ws_update">Обновить</string>
     <string name="ws_create_starter_project">Создать стартовый проект</string>
     <string name="ws_project_name">Название проекта</string>
@@ -103,7 +108,6 @@
     <string name="ws_disconnect">Отключить</string>
     <string name="ws_update_to">Обновить до %1$s</string>
     <string name="ws_update_default_notes">Получите последние улучшения и исправления Mobile Harness.</string>
-    <string name="ws_update_download_size">Размер загрузки: %1$s</string>
     <string name="ws_update_allow_unknown_apps">Разрешите «Установку неизвестных приложений» для Mobile Harness. Без этого разрешения Android не установит обновление.</string>
     <string name="ws_update_downloading_progress">Загрузка %1$s / %2$s · %3$d%%</string>
     <string name="ws_update_downloading">Загрузка %1$s</string>

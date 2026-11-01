@@ -80,6 +80,11 @@
     <string name="ws_collapse">طي</string>
     <string name="ws_expand">توسيع</string>
     <string name="ws_update_ready">يتوفر تحديث جديد</string>
+    <string name="ws_update_channel_stable">مستقرة</string>
+    <string name="ws_update_channel_beta">نسخة تجريبية للتنقيح</string>
+    <string name="ws_update_options_count">%1$d خيارات للتحديث</string>
+    <string name="ws_update_uninstall_note">تتطلب العودة من نسخة تجريبية للتنقيح إلى الإصدار المستقر إلغاء التثبيت أولًا، ما يمحو كل بيانات التطبيق. صدّر نسخة احتياطية من الإعدادات، ثم ألغِ التثبيت وثبّت ملف APK المستقر من صفحة الإصدارات على GitHub.</string>
+    <string name="ws_update_open_releases">فتح صفحة الإصدارات</string>
     <string name="ws_update">تحديث</string>
     <string name="ws_create_starter_project">إنشاء مشروع مبدئي</string>
     <string name="ws_project_name">اسم المشروع</string>
@@ -103,7 +108,6 @@
     <string name="ws_disconnect">قطع الاتصال</string>
     <string name="ws_update_to">التحديث إلى %1$s</string>
     <string name="ws_update_default_notes">احصل على أحدث التحسينات والإصلاحات لـ Mobile Harness.</string>
-    <string name="ws_update_download_size">حجم التنزيل: %1$s</string>
     <string name="ws_update_allow_unknown_apps">اسمح بـ ‘تثبيت التطبيقات غير المعروفة’ لـ Mobile Harness. بدون هذا الإذن لن يثبّت Android التحديث.</string>
     <string name="ws_update_downloading_progress">جارٍ التنزيل %1$s / %2$s · %3$d%%</string>
     <string name="ws_update_downloading">جارٍ التنزيل %1$s</string>

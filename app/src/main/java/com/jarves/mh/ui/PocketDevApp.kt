@@ -246,6 +246,8 @@ import com.jarves.mh.model.ProjectKind
 import com.jarves.mh.model.ProjectType
 import com.jarves.mh.model.AndroidTemplate
 import com.jarves.mh.model.ProjectChat
+import com.jarves.mh.update.AppUpdateChannel
+import com.jarves.mh.update.AppUpdateInfo
 import com.jarves.mh.model.ProviderKind
 import com.jarves.mh.model.ProviderProfile
 import com.jarves.mh.model.inferredDshApiForUrl
@@ -3655,10 +3657,13 @@ private fun ProjectsScreen(
     onSettings: () -> Unit,
     onPing: () -> Unit,
     onToggleTheme: () -> Unit,
-    onInstallUpdate: () -> Unit,
+    onInstallUpdate: (AppUpdateInfo) -> Unit,
 ) {
     var showCreate by rememberSaveable { mutableStateOf(false) }
     var showUpdateDialog by rememberSaveable { mutableStateOf(false) }
+    // Offer whose install was deferred on the unknown-sources permission and
+    // should resume once the user returns from system settings.
+    var pendingPermissionUpdate by remember { mutableStateOf<AppUpdateInfo?>(null) }
     var showGitDialog by rememberSaveable { mutableStateOf(false) }
     var showGitHubDialog by rememberSaveable { mutableStateOf(false) }
     var importExpanded by rememberSaveable { mutableStateOf(false) }
@@ -3669,13 +3674,16 @@ private fun ProjectsScreen(
     val projects = state.projects
     val context = LocalContext.current
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        onInstallUpdate()
+        pendingPermissionUpdate?.let { pending ->
+            pendingPermissionUpdate = null
+            onInstallUpdate(pending)
+        }
     }
     val importZipLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) onImportZip(uri)
     }
-    LaunchedEffect(state.appUpdate?.versionCode) {
-        if (state.appUpdate != null) showUpdateDialog = true
+    LaunchedEffect(state.appUpdates.map { it.versionCode }) {
+        if (state.appUpdates.isNotEmpty()) showUpdateDialog = true
     }
     Scaffold(
         topBar = {
@@ -3833,7 +3841,7 @@ private fun ProjectsScreen(
                     }
                 }
             }
-            state.appUpdate?.let { update ->
+            state.appUpdates.firstOrNull()?.let { update ->
                 item {
                     Surface(
                         modifier = Modifier.fillMaxWidth().clickable { showUpdateDialog = true },
@@ -3848,7 +3856,12 @@ private fun ProjectsScreen(
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
                                 Text("Mobile Harness ${update.versionName}", fontWeight = FontWeight.Bold)
-                                Text(stringResource(R.string.ws_update_ready), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    if (state.appUpdates.size > 1) stringResource(R.string.ws_update_options_count, state.appUpdates.size)
+                                    else stringResource(R.string.ws_update_ready),
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                             }
                             Text(stringResource(R.string.ws_update), color = PocketOrange, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
@@ -4113,22 +4126,26 @@ private fun ProjectsScreen(
             },
         )
     }
-    val update = state.appUpdate
-    if (showUpdateDialog && update != null) {
+    if (showUpdateDialog && state.appUpdates.isNotEmpty()) {
         val canInstall = Build.VERSION.SDK_INT < Build.VERSION_CODES.O || context.packageManager.canRequestPackageInstalls()
         val downloading = state.appUpdateStatus == AppUpdateStatus.DOWNLOADING
         val installing = state.appUpdateStatus == AppUpdateStatus.INSTALLING
         val total = state.appUpdateTotalBytes
         val downloaded = state.appUpdateDownloadedBytes
         val progress = if (total > 0) (downloaded.toFloat() / total).coerceIn(0f, 1f) else 0f
+        val releasesPageUrl = BuildConfig.APP_UPDATE_MANIFEST_URL.substringBefore("/releases/") + "/releases"
         AlertDialog(
             onDismissRequest = { if (!installing) showUpdateDialog = false },
             icon = { Icon(Icons.Default.Download, null, tint = PocketOrange, modifier = Modifier.size(34.dp)) },
-            title = { Text(stringResource(R.string.ws_update_to, update.versionName), fontWeight = FontWeight.Bold) },
+            title = {
+                Text(
+                    if (state.appUpdates.size > 1) stringResource(R.string.ws_update_options_count, state.appUpdates.size)
+                    else stringResource(R.string.ws_update_to, state.appUpdates.first().versionName),
+                    fontWeight = FontWeight.Bold,
+                )
+            },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(update.notes.ifBlank { stringResource(R.string.ws_update_default_notes) })
-                    if (update.sizeBytes > 0) Text(stringResource(R.string.ws_update_download_size, formatMegabytes(update.sizeBytes)), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                     if (!canInstall) {
                         Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.65f)) {
                             Row(Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
@@ -4138,35 +4155,82 @@ private fun ProjectsScreen(
                             }
                         }
                     }
-                    if (downloading) {
-                        if (total > 0) LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
-                        else LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                        Text(
-                            if (total > 0) stringResource(R.string.ws_update_downloading_progress, formatMegabytes(downloaded), formatMegabytes(total), (progress * 100).toInt()) else stringResource(R.string.ws_update_downloading, formatMegabytes(downloaded)),
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                    state.appUpdates.forEach { update ->
+                        val isTarget = state.appUpdateTarget == update
+                        val isDebug = update.channel == AppUpdateChannel.DEBUG
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                        ) {
+                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = if (isDebug) PocketOrange.copy(alpha = 0.18f) else PocketGreen.copy(alpha = 0.16f),
+                                    ) {
+                                        Text(
+                                            stringResource(if (isDebug) R.string.ws_update_channel_beta else R.string.ws_update_channel_stable),
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isDebug) PocketOrange else PocketGreen,
+                                        )
+                                    }
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(update.versionName, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                                    if (update.sizeBytes > 0) Text(formatMegabytes(update.sizeBytes), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Text(update.notes.ifBlank { stringResource(R.string.ws_update_default_notes) }, fontSize = 13.sp)
+                                if (isTarget && downloading) {
+                                    if (total > 0) LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
+                                    else LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                                    Text(
+                                        if (total > 0) stringResource(R.string.ws_update_downloading_progress, formatMegabytes(downloaded), formatMegabytes(total), (progress * 100).toInt()) else stringResource(R.string.ws_update_downloading, formatMegabytes(downloaded)),
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                if (isTarget && installing) Text(stringResource(R.string.ws_update_verified_installing), color = PocketGreen, fontSize = 13.sp)
+                                if (update.requiresUninstall) {
+                                    Row(verticalAlignment = Alignment.Top) {
+                                        Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(stringResource(R.string.ws_update_uninstall_note), fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
+                                    }
+                                    OutlinedButton(
+                                        onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(releasesPageUrl))) },
+                                    ) { Text(stringResource(R.string.ws_update_open_releases)) }
+                                } else {
+                                    Button(
+                                        enabled = !downloading && !installing,
+                                        onClick = {
+                                            if (!canInstall && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                                pendingPermissionUpdate = update
+                                                permissionLauncher.launch(
+                                                    Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}")),
+                                                )
+                                            } else {
+                                                onInstallUpdate(update)
+                                            }
+                                        },
+                                    ) {
+                                        Text(
+                                            when {
+                                                !canInstall -> stringResource(R.string.ws_grant_permission)
+                                                isTarget && downloading -> stringResource(R.string.ws_downloading_ellipsis)
+                                                isTarget && installing -> stringResource(R.string.tools_installing)
+                                                else -> stringResource(R.string.ws_download_and_install)
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
-                    if (installing) Text(stringResource(R.string.ws_update_verified_installing), color = PocketGreen, fontSize = 13.sp)
                     state.appUpdateError?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 13.sp) }
                 }
             },
-            confirmButton = {
-                Button(
-                    enabled = !downloading && !installing,
-                    onClick = {
-                        if (!canInstall && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            permissionLauncher.launch(
-                                Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}")),
-                            )
-                        } else {
-                            onInstallUpdate()
-                        }
-                    },
-                ) {
-                    Text(when { !canInstall -> stringResource(R.string.ws_grant_permission); downloading -> stringResource(R.string.ws_downloading_ellipsis); installing -> stringResource(R.string.tools_installing); else -> stringResource(R.string.ws_download_and_install) })
-                }
-            },
+            confirmButton = {},
             dismissButton = { if (!installing) TextButton(onClick = { showUpdateDialog = false }) { Text(stringResource(R.string.ws_later)) } },
         )
     }

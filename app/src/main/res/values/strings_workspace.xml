@@ -80,6 +80,11 @@
     <string name="ws_collapse">Collapse</string>
     <string name="ws_expand">Expand</string>
     <string name="ws_update_ready">A new update is ready</string>
+    <string name="ws_update_channel_stable">Stable</string>
+    <string name="ws_update_channel_beta">Debug beta</string>
+    <string name="ws_update_options_count">%1$d update options</string>
+    <string name="ws_update_uninstall_note">Switching from a debug beta back to a stable release requires uninstalling first, which deletes all app data. Export a backup from Settings, uninstall, then install the stable APK from the GitHub releases page.</string>
+    <string name="ws_update_open_releases">Open releases page</string>
     <string name="ws_update">Update</string>
     <string name="ws_create_starter_project">Create a starter project</string>
     <string name="ws_project_name">Project name</string>
@@ -103,7 +108,6 @@
     <string name="ws_disconnect">Disconnect</string>
     <string name="ws_update_to">Update to %1$s</string>
     <string name="ws_update_default_notes">Get the latest improvements and fixes for Mobile Harness.</string>
-    <string name="ws_update_download_size">Download size: %1$s</string>
     <string name="ws_update_allow_unknown_apps">Allow ‘Install unknown apps’ for Mobile Harness. Without this permission, Android will not install the update.</string>
     <string name="ws_update_downloading_progress">Downloading %1$s / %2$s · %3$d%%</string>
     <string name="ws_update_downloading">Downloading %1$s</string>

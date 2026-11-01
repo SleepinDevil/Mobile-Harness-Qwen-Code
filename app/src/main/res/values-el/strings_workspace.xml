@@ -57,6 +57,11 @@
     <string name="ws_collapse">Σύμπτυξη</string>
     <string name="ws_expand">Ανάπτυξη</string>
     <string name="ws_update_ready">Μια νέα ενημέρωση είναι έτοιμη</string>
+    <string name="ws_update_channel_stable">Σταθερή</string>
+    <string name="ws_update_channel_beta">Δοκιμαστική debug</string>
+    <string name="ws_update_options_count">%1$d επιλογές ενημέρωσης</string>
+    <string name="ws_update_uninstall_note">Η επιστροφή από δοκιμαστική έκδοση debug στη σταθερή απαιτεί πρώτα απεγκατάσταση, η οποία διαγράφει όλα τα δεδομένα της εφαρμογής. Εξάγετε αντίγραφο ασφαλείας στις Ρυθμίσεις, κάντε απεγκατάσταση και εγκαταστήστε το σταθερό APK από τη σελίδα εκδόσεων του GitHub.</string>
+    <string name="ws_update_open_releases">Άνοιγμα σελίδας εκδόσεων</string>
     <string name="ws_update">Ενημέρωση</string>
     <string name="ws_create_starter_project">Δημιουργία έργου εκκίνησης</string>
     <string name="ws_project_name">Όνομα έργου</string>
@@ -80,7 +85,6 @@
     <string name="ws_disconnect">Αποσύνδεση</string>
     <string name="ws_update_to">Ενημέρωση σε %1$s</string>
     <string name="ws_update_default_notes">Λάβετε τις τελευταίες βελτιώσεις και διορθώσεις για το Mobile Harness.</string>
-    <string name="ws_update_download_size">Μέγεθος λήψης: %1$s</string>
     <string name="ws_update_allow_unknown_apps">Επιτρέψτε την «Εγκατάσταση άγνωστων εφαρμογών» για το Mobile Harness. Χωρίς αυτή την άδεια, το Android δεν θα εγκαταστήσει την ενημέρωση.</string>
     <string name="ws_update_downloading_progress">Λήψη %1$s / %2$s · %3$d%%</string>
     <string name="ws_update_downloading">Λήψη %1$s</string>

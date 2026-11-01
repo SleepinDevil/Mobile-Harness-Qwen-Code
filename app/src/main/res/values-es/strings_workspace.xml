@@ -80,6 +80,11 @@
     <string name="ws_collapse">Contraer</string>
     <string name="ws_expand">Expandir</string>
     <string name="ws_update_ready">Hay una nueva actualización disponible</string>
+    <string name="ws_update_channel_stable">Estable</string>
+    <string name="ws_update_channel_beta">Beta de depuración</string>
+    <string name="ws_update_options_count">%1$d opciones de actualización</string>
+    <string name="ws_update_uninstall_note">Volver de una beta de depuración a la versión estable requiere desinstalar primero, lo que borra todos los datos de la aplicación. Exporta una copia de seguridad en Ajustes, desinstala e instala el APK estable desde la página de lanzamientos de GitHub.</string>
+    <string name="ws_update_open_releases">Abrir página de lanzamientos</string>
     <string name="ws_update">Actualizar</string>
     <string name="ws_create_starter_project">Crear un proyecto inicial</string>
     <string name="ws_project_name">Nombre del proyecto</string>
@@ -103,7 +108,6 @@
     <string name="ws_disconnect">Desconectar</string>
     <string name="ws_update_to">Actualizar a %1$s</string>
     <string name="ws_update_default_notes">Obtén las últimas mejoras y correcciones de Mobile Harness.</string>
-    <string name="ws_update_download_size">Tamaño de descarga: %1$s</string>
     <string name="ws_update_allow_unknown_apps">Permite «Instalar apps desconocidas» para Mobile Harness. Sin este permiso, Android no instalará la actualización.</string>
     <string name="ws_update_downloading_progress">Descargando %1$s / %2$s · %3$d%%</string>
     <string name="ws_update_downloading">Descargando %1$s</string>
