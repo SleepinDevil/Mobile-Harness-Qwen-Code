@@ -261,6 +261,19 @@ class QwenBridgeTest {
     }
 
     @Test
+    fun settingsJsonPinsOutputLanguageAgainstAutoMigration() {
+        val settings = qwenSettingsJson(
+            route = qwenTestRoute(),
+            maxSessionTurns = 25,
+            contextWindowTokens = 0,
+            autoCompactPercent = 85,
+            subagentsEnabled = false,
+            outputLanguageName = qwenOutputLanguageName("zh", "en"),
+        )
+        assertEquals("Chinese", settings.getJSONObject("general").getString("outputLanguage"))
+    }
+
+    @Test
     fun launchEnvironmentCapsSubagentsOnlyWhenEnabled() {
         val disabled = qwenLaunchEnvironment("OPENAI_API_KEY", "secret", false, 10)
         assertFalse(disabled.containsKey("QWEN_CODE_MAX_BACKGROUND_AGENTS"))
@@ -271,6 +284,38 @@ class QwenBridgeTest {
 
         val floored = qwenLaunchEnvironment("OPENAI_API_KEY", "secret", true, 0)
         assertEquals("1", floored["QWEN_CODE_MAX_BACKGROUND_AGENTS"])
+    }
+
+    @Test
+    fun launchEnvironmentPinsQwenLanguageOnlyWhenGiven() {
+        val withLanguage = qwenLaunchEnvironment("OPENAI_API_KEY", "secret", false, 1, "ru")
+        assertEquals("ru", withLanguage["QWEN_CODE_LANG"])
+
+        val withoutLanguage = qwenLaunchEnvironment("OPENAI_API_KEY", "secret", false, 1)
+        assertFalse(withoutLanguage.containsKey("QWEN_CODE_LANG"))
+    }
+
+    @Test
+    fun outputLanguageFollowsAppSettingWithEnglishFallback() {
+        assertEquals("Chinese", qwenOutputLanguageName("zh", "en"))
+        assertEquals("Russian", qwenOutputLanguageName("ru", "en"))
+        // Unsupported-in-CLI app languages answer in English.
+        assertEquals("English", qwenOutputLanguageName("el", "en"))
+        assertEquals("English", qwenOutputLanguageName("es", "en"))
+        // "system" defers to the device language.
+        assertEquals("Russian", qwenOutputLanguageName("system", "ru"))
+        assertEquals("English", qwenOutputLanguageName("system", "tr"))
+        assertEquals("en", qwenLanguageEnvCode("English"))
+        assertEquals("zh", qwenLanguageEnvCode("Chinese"))
+    }
+
+    @Test
+    fun outputLanguageFileMatchesCliStorageFormat() {
+        val content = qwenOutputLanguageFileContent(qwenOutputLanguageName("el", "en"))
+        // The CLI parses its marker back out; keep the exact shape it writes.
+        assertEquals("English", Regex("<!--\\s*qwen-code:llm-output-language:\\s*(.*?)\\s*-->").find(content)!!.groupValues[1])
+        assertTrue(content.contains("You MUST always respond in **English**"))
+        assertTrue(content.startsWith("# Output language preference: English"))
     }
 
     @Test

@@ -16,6 +16,7 @@ import com.jarves.mh.model.ToolRequest
 import com.jarves.mh.model.inferredDshApiForUrl
 import java.io.File
 import java.io.RandomAccessFile
+import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
@@ -167,6 +168,7 @@ class QwenRuntimeBridge(
             val route = QwenRouteMapper.forProfile(provider, openRouterGateway?.url)
             writeQwenSettings(installed.rootfs, route)
             writeQwenMemory(installed.rootfs)
+            writeQwenOutputLanguage(installed.rootfs)
             val launchEnvironment = buildQwenEnvironment(route, secret)
 
             val guestWorkspacePath = "/workspace/$projectSlug"
@@ -920,6 +922,7 @@ class QwenRuntimeBridge(
             maxToolCalls = maxToolCalls(),
             memoryEnabled = memoryEnabled(),
             shellTimeoutMs = shellTimeoutMs(),
+            outputLanguageName = appOutputLanguageName(),
         )
         File(home, "settings.json").writeText(settings.toString(2))
     }
@@ -951,6 +954,27 @@ class QwenRuntimeBridge(
         secret = secret,
         subagentsEnabled = subagentsEnabled(),
         maxConcurrentSubagents = maxConcurrentSubagents(),
+        languageCode = qwenLanguageEnvCode(appOutputLanguageName()),
+    )
+
+    /**
+     * Pins the CLI's reply language to the in-app language. Two halves:
+     * `general.outputLanguage` in settings.json (the CLI's startup migration
+     * otherwise rewrites a pinned `output-language.md` back to the weak
+     * "mirror the user" rule when the setting is auto — the drift that made
+     * Qwen models answer in Chinese, cf. upstream issue QwenLM/qwen-code#2003)
+     * and this file, rewritten every launch so a stale auto/mirror file from
+     * an earlier session is replaced immediately. A manual `/language output`
+     * change lasts for the running sessions only; the app setting always wins.
+     */
+    private fun writeQwenOutputLanguage(rootfs: File) {
+        val home = File(rootfs, QWEN_HOME_GUEST_PATH.removePrefix("/")).apply { mkdirs() }
+        File(home, "output-language.md").writeText(qwenOutputLanguageFileContent(appOutputLanguageName()))
+    }
+
+    private fun appOutputLanguageName(): String = qwenOutputLanguageName(
+        languageCode = AppStrings.languageCode(context),
+        deviceLanguage = Locale.getDefault().language,
     )
 
     private fun buildContextPrompt(currentPrompt: String, history: List<ChatMessage>, guestWorkspacePath: String, projectKind: ProjectKind): String {
@@ -1226,6 +1250,7 @@ internal fun qwenSettingsJson(
     maxToolCalls: Int = 0,
     shellTimeoutMs: Int = 0,
     memoryEnabled: Boolean = false,
+    outputLanguageName: String = "English",
 ): JSONObject {
     val providerEntry = JSONObject()
         .put("id", route.model)
@@ -1269,6 +1294,11 @@ internal fun qwenSettingsJson(
                 .put("folderTrust", JSONObject().put("enabled", false)),
         )
         .put("model", modelSettings)
+        // Without this key the CLI resolves the output language as "auto" and
+        // its startup migration rewrites any pinned output-language.md back to
+        // the weak mirror rule, letting replies drift into Chinese. The CLI
+        // accepts the canonical full names here.
+        .put("general", JSONObject().put("outputLanguage", outputLanguageName))
         .put(
             "context",
             JSONObject().put("autoCompactThreshold", autoCompactPercent.coerceIn(5, 100) / 100.0),
@@ -1301,6 +1331,7 @@ internal fun qwenLaunchEnvironment(
     secret: String,
     subagentsEnabled: Boolean,
     maxConcurrentSubagents: Int,
+    languageCode: String? = null,
 ): Map<String, String> = buildMap {
     put(envKey, secret)
     put("QWEN_TELEMETRY_ENABLED", "0")
@@ -1311,10 +1342,61 @@ internal fun qwenLaunchEnvironment(
     put("QWEN_CODE_DISABLE_ARTIFACT", "1")
     put("NO_COLOR", "1")
     put("NODE_OPTIONS", "--max-old-space-size=1024")
+    // Overrides the CLI's own language resolution (QWEN_CODE_LANG wins over
+    // settings and auto-detection), so the terminal UI follows the app too.
+    if (languageCode != null) put("QWEN_CODE_LANG", languageCode)
     if (subagentsEnabled) {
         put("QWEN_CODE_MAX_BACKGROUND_AGENTS", maxConcurrentSubagents.coerceAtLeast(1).toString())
     }
 }
+
+/**
+ * Reply language for the guest CLI, following the in-app language setting.
+ * Qwen Code only translates its UI and prompts for a handful of locales; every
+ * other app language (and anything under "system" that is not one of them)
+ * falls back to English. The names are the CLI's own canonical full names.
+ */
+internal fun qwenOutputLanguageName(languageCode: String, deviceLanguage: String): String {
+    val effective = if (languageCode.lowercase() in setOf("system", "")) deviceLanguage else languageCode
+    return when (effective.lowercase()) {
+        "zh" -> "Chinese"
+        "ru" -> "Russian"
+        else -> "English"
+    }
+}
+
+/** CLI language code for [qwenLaunchEnvironment]; codes the CLI recognises. */
+internal fun qwenLanguageEnvCode(languageName: String): String = when (languageName) {
+    "Chinese" -> "zh"
+    "Russian" -> "ru"
+    else -> "en"
+}
+
+/**
+ * Mirrors the CLI's own `generateOutputLanguageFileContent()` fixed-language
+ * template byte-for-byte (marker included), so `/language output` in the guest
+ * can still read and rewrite the file.
+ */
+internal fun qwenOutputLanguageFileContent(language: String): String = """
+    # Output language preference: $language
+    <!-- qwen-code:llm-output-language: $language -->
+
+    ## Rule
+    You MUST always respond in **$language** regardless of the user's input language.
+    This is a mandatory requirement, not a preference.
+
+    ## Exception
+    If the user **explicitly** requests a response in a specific language (e.g., "please reply in English", "用中文回答"), switch to the user's requested language for the remainder of the conversation.
+
+    ## Keep technical artifacts unchanged
+    Do **not** translate or rewrite:
+    - Code blocks, CLI commands, file paths, stack traces, logs, JSON keys, identifiers
+    - Exact quoted text from the user (keep quotes verbatim)
+
+    ## Tool / system outputs
+    Raw tool/system outputs may contain fixed-format English. Preserve them verbatim, and if needed, add a short **$language** explanation below.
+
+    """.trimIndent() + "\n"
 
 /** Parsed `system/task_started` payload: a subagent just detached and went live. */
 internal data class QwenTaskStart(val callId: String, val description: String)
