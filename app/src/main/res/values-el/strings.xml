@@ -479,4 +479,6 @@
     <string name="diagnostics_inactive_stopped">Οι ανενεργές διεργασίες διακόπηκαν</string>
     <string name="diagnostics_cache_busy">Περιμένετε να ολοκληρωθούν οι ενεργές εργασίες πριν από την εκκαθάριση της εξόδου</string>
     <string name="diagnostics_cache_cleared">Η προσωρινή έξοδος περιβάλλοντος εκκαθαρίστηκε</string>
+    <string name="agent_subtitle_qwen">Ανοικτός coding agent της Alibaba · πάροχοι με API key</string>
+    <string name="agent_title_qwen">Qwen Code</string>
 </resources>

@@ -140,4 +140,9 @@
     <string name="rt_update_version_mismatch">Η έκδοση της ενημέρωσης δεν αντιστοιχεί στο manifest της</string>
     <string name="rt_update_signature_mismatch">Η ενημέρωση δεν έχει υπογραφεί με το κλειδί υπογραφής της εγκατεστημένης εφαρμογής</string>
     <string name="rt_api_http_public">Το απλό http:// επιτρέπεται μόνο για διευθύνσεις τοπικού δικτύου (όπως 192.168.x.x, 10.x.x.x, Tailscale ή .local). Χρησιμοποιήστε https:// για αυτόν τον διακομιστή.</string>
+    <string name="rt_install_qwen_update_failed">Η ενημέρωση του Qwen Code απέτυχε· η εγκατεστημένη έκδοση διατηρήθηκε</string>
+    <string name="rt_qwen_finalizing_detail">Καμία έξοδος για %1$d δλ μετά την ολοκλήρωση της απάντησης· το Qwen Code εκτέλεσε κρυτές εργασίες τέλους στροφής (π.χ. auto-memory) πριν κλείσει τη συνεδρία.</string>
+    <string name="rt_qwen_finalizing_title">Κρυτός τερματισμός</string>
+    <string name="rt_qwen_usage_detail">%1$d είσοδος · %2$d έξοδος · %3$d cache-read σε όλη τη συνεδρία</string>
+    <string name="rt_qwen_usage_title">Tokens συνεδρίας</string>
 </resources>

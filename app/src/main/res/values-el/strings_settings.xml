@@ -112,4 +112,64 @@
     <string name="st_update_channel_overridden">Παρακάμφθηκε · μόνο debug</string>
     <string name="st_use_and_check">Χρήση &amp; έλεγχος</string>
     <string name="st_use_custom_model_id">Χρήση προσαρμοσμένου ID μοντέλου:</string>
+    <string name="st_effort_default">Προεπιλογή</string>
+    <string name="st_effort_max">Max</string>
+    <string name="st_effort_xhigh">XHigh</string>
+    <string name="st_efforts_extended">Off / Low / Medium / High / Max</string>
+    <string name="st_efforts_none">None</string>
+    <string name="st_efforts_simple">Off / Low / High</string>
+    <string name="st_efforts_standard">Off / Low / Medium / High</string>
+    <string name="st_harness_claude_bash_timeout">Όριο χρονικού ορίου Bash (ms)</string>
+    <string name="st_harness_claude_bash_timeout_support">Αυξάνει το μέγιστο επιτρεπόμενο χρονικό όριο για εντολές Bash. 0 = προεπιλογή CLI.</string>
+    <string name="st_harness_claude_output">Μέγιστα tokens εξόδου ανά στροφή</string>
+    <string name="st_harness_claude_output_support">Οριοθετεί το μήκος εξόδου ανά στροφή. 0 = προεπιλογή μοντέλου.</string>
+    <string name="st_harness_claude_thinking">Μέγιστα tokens σκέψης</string>
+    <string name="st_harness_claude_thinking_support">Προϋπολογισμός εκτεταμένης σκέψης ανά αίτημα. 0 = προεπιλογή μοντέλου.</string>
+    <string name="st_harness_claude_turns_support">Μεταβιβάζεται στο Claude Code ως --max-turns. Το 0 καταργεί το όριο.</string>
+    <string name="st_harness_dsh_context">Παράθυρο πλαισίου μοντέλου (tokens)</string>
+    <string name="st_harness_dsh_context_support">Δηλωμένη χωρητικότητα για το επιλεγμένο μοντέλο. Μόνο για προσαρμοσμένες διαδρομές API· 0 = προεπιλογή προσαρμογέα (262144).</string>
+    <string name="st_harness_dsh_efforts">Επίπεδα σκέψης</string>
+    <string name="st_harness_dsh_efforts_support">Επίπεδα προσπάθειας που προσφέρονται για το μοντέλο. Μόνο για προσαρμοσμένες διαδρομές API· το None δηλώνει απουσία συλλογισμών.</string>
+    <string name="st_harness_dsh_max_output">Μέγιστα tokens εξόδου</string>
+    <string name="st_harness_dsh_max_output_support">Όριο εξόδου ανά αίτημα. Μόνο για προσαρμοσμένες διαδρομές API· 0 = προεπιλογή προσαρμογέα (32768).</string>
+    <string name="st_harness_log_copy_notable">Αντιγραφή σημαντικών</string>
+    <string name="st_harness_log_download_full">Λήψη πλήρους καταγραφής</string>
+    <string name="st_harness_log_failed">Αποτυχία</string>
+    <string name="st_harness_log_failed_exit">Αποτυχία · έξοδος %1$d</string>
+    <string name="st_harness_log_full">Πλήρης καταγραφή</string>
+    <string name="st_harness_log_issues">%1$d σημαντικά μηνύματα</string>
+    <string name="st_harness_log_missing">Αυτή η καταγραφή δεν είναι πλέον διαθέσιμη.</string>
+    <string name="st_harness_log_ok">Ολοκληρώθηκε</string>
+    <string name="st_harness_log_open_title">Καταγραφή harness</string>
+    <string name="st_harness_log_save">Αποθήκευση σε συσκευή</string>
+    <string name="st_harness_logs_clear">Διαγραφή καταγραφών</string>
+    <string name="st_harness_logs_cleared">Οι καταγραφές harness διαγράφηκαν</string>
+    <string name="st_harness_logs_download">Λήψη όλων των καταγραφών</string>
+    <string name="st_harness_logs_empty">Δεν έχουν καταγραφεί εκτελέσεις harness ακόμη. Στείλτε ένα prompt και επιστρέψτε εδώ.</string>
+    <string name="st_harness_logs_save_failed">Δεν ήταν δυνατή η αποθήκευση της καταγραφής</string>
+    <string name="st_harness_logs_saved">Η καταγραφή αποθηκεύτηκε</string>
+    <string name="st_harness_logs_subtitle">Ακατέργαστη έξοδος harness (stdout + stderr) για πρόσφατες εκτελέσεις, συμπεριλαμβανομένων σφαλμάτων που σταματούν μια εργασία</string>
+    <string name="st_harness_logs_title">Καταγραφές εκτέλεσης</string>
+    <string name="st_harness_max_turns">Μέγιστες στροφές συνεδρίας</string>
+    <string name="st_harness_max_wall">Μέγιστος χρόνος εκτέλεσης (λεπτά)</string>
+    <string name="st_harness_qwen_compact">Όριο αυτόματης συμπίεσης (%)</string>
+    <string name="st_harness_qwen_compact_support">Να γίνεται περίληψη της συνεδρίας όταν καταλάβει αυτό το μέρος του παραθύρου πλαισίου.</string>
+    <string name="st_harness_qwen_context">Παράθυρο πλαισίου (tokens)</string>
+    <string name="st_harness_qwen_context_support">Το πραγματικό μήκος πλαισίου του διακομιστή σας. Το Qwen Code υποθέτει 200K για άγνωστα μοντέλα και μπορεί να ξεπεράσει ένα μικρότερο αυτοφιλοξενούμενο παράθυρο· το 0 διατηρεί αυτή την προεπιλογή.</string>
+    <string name="st_harness_qwen_effort_support">Πόσο σκέφτεται το μοντέλο πριν απαντήσει. Η προεπιλογή διατηρεί την επιλογή του παρόχου.</string>
+    <string name="st_harness_qwen_max_subagents">Μέγιστα παράλληλα subagents</string>
+    <string name="st_harness_qwen_max_subagents_support">Όριο subagents που εκτελούνται ταυτόχρονα.</string>
+    <string name="st_harness_qwen_max_tool_calls">Μέγιστες κλήσεις εργαλείων ανά εκτέλεση</string>
+    <string name="st_harness_qwen_max_tool_calls_support">Συσσωρευτικός προϋπολογισμός κλήσεων εργαλείων· η εκτέλεση σταματά όταν εξαντληθεί. 0 = απεριόριστα.</string>
+    <string name="st_harness_qwen_memory">Ενεργοποίηση Memories και Dreaming</string>
+    <string name="st_harness_qwen_memory_support">Τα auto-memories και τα auto-dreams αυξάνουν ένα μονίμως ενεργό πλαίσιο και εκτελούν κρυφές κλήσεις μοντέλου μετά από κάθε απάντηση. Είναι δύσκολο να επιθεωρηθούν ή να διαχειριστείς στην κινητή έκδοση του Qwen Code, γι’ αυτό παραμένουν απενεργοποιημένα εξ ορισμού.</string>
+    <string name="st_harness_qwen_shell_timeout">Χρονικό όριο εντολών κελύφους (ms)</string>
+    <string name="st_harness_qwen_shell_timeout_support">Οι εντολές προσκηνίου διακόπτονται μετά από αυτή την καθυστέρηση. 0 = προεπιλογή CLI (120 δλ).</string>
+    <string name="st_harness_qwen_subagents">Subagents</string>
+    <string name="st_harness_qwen_subagents_support">Επιτρέπει στο Qwen Code να αναθέτει δευτερεύουσες εργασίες σε παράλληλα subagents. Χρησιμοποιεί περισσότερη μνήμη και κλήσεις μοντέλου· όταν είναι απενεργοποιημένα, τα εργαλεία αφαιρούνται εντελώς.</string>
+    <string name="st_harness_qwen_turns_support">Γράφεται στο model.maxSessionTurns στο %1$s. Αυξήστε το όταν μια μεγάλη εργασία σταματά με \\"Reached max session turns\\".</string>
+    <string name="st_harness_reset">Επαναφορά σε προεπιλογές</string>
+    <string name="st_harness_subtitle">Όρια στροφών και καταγραφές εκτέλεσης για τους coding agents</string>
+    <string name="st_harness_title">Ρυθμίσεις harness</string>
+    <string name="st_harness_wall_support">Μεταβιβάζεται στο Qwen Code ως --max-wall-time. Εργασίες που εκτελούνται περισσότερο διακόπτονται.</string>
 </resources>

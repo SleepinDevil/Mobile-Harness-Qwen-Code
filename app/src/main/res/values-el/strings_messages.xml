@@ -187,4 +187,5 @@
     <string name="ws_terminal_leave_body">Το «%1$s» εκτελείται ακόμα στο τερματικό.</string>
     <string name="ws_terminal_leave_stop">Διακοπή και επιστροφή</string>
     <string name="ws_terminal_leave_keep">Συνέχιση εκτέλεσης</string>
+    <string name="vm_qwen_claude_unsupported">Η σύνδεση με συνδρομή Claude δεν υποστηρίζεται από το Qwen Code — επιλέξτε πάροχο με API key στις Ρυθμίσεις.</string>
 </resources>
