@@ -7,11 +7,6 @@
       "url": "https://github.com/SleepinDevil/Mobile-Harness-Qwen-Code/releases/download/v1.0.10/mobile-harness-online.apk",
       "sha256": "afbb9a02367fa9920e0943c54019886007846584aca07ab3baf72eaf2e77714e",
       "sizeBytes": 90050530
-    },
-    "offline": {
-      "url": "https://github.com/SleepinDevil/Mobile-Harness-Qwen-Code/releases/download/v1.0.10/mobile-harness-offline.apk",
-      "sha256": "00f0e276b7ecafa8b3ecd1b03a5a5a4806a3004d57d4a017b64bc6d97d10770d",
-      "sizeBytes": 962412641
     }
   }
 }

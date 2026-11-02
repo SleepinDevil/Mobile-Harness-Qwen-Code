@@ -1141,11 +1141,11 @@ class QwenRuntimeBridge(
     companion object {
         const val QWEN_HOME_GUEST_PATH = "/root/.qwen"
         private const val QWEN_GUEST_PATH = RuntimeInstaller.QWEN_GUEST_PATH
-        const val DEFAULT_MAX_SESSION_TURNS = 25
-        const val DEFAULT_MAX_WALL_MINUTES = 30
+        const val DEFAULT_MAX_SESSION_TURNS = 500
+        const val DEFAULT_MAX_WALL_MINUTES = 120
         private const val FOREGROUND_PROGRESS_MIN_INTERVAL_MS = 750L
-        /** 0 lets Qwen Code guess the context window (200K fallback for unknown models). */
-        const val DEFAULT_CONTEXT_WINDOW_TOKENS = 0
+        /** Sensible explicit window; set 0 in Settings to let Qwen Code guess (200K fallback for unknown models). */
+        const val DEFAULT_CONTEXT_WINDOW_TOKENS = 128_000
         const val DEFAULT_AUTO_COMPACT_PERCENT = 85
         const val DEFAULT_SUBAGENTS_ENABLED = false
         const val DEFAULT_MEMORY_ENABLED = false

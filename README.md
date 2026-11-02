@@ -18,8 +18,7 @@
 
   <br />
 
-  [**Download Online APK**](https://github.com/SleepinDevil/Mobile-Harness-Qwen-Code/releases/latest/download/mobile-harness-online.apk) &nbsp;•&nbsp;
-  [**Download Offline APK**](https://github.com/SleepinDevil/Mobile-Harness-Qwen-Code/releases/latest/download/mobile-harness-offline.apk) &nbsp;•&nbsp;
+  [**Download APK**](https://github.com/SleepinDevil/Mobile-Harness-Qwen-Code/releases/latest/download/mobile-harness-online.apk) &nbsp;•&nbsp;
   [**Watch Walkthrough (3 min)**](https://youtu.be/QzAau52Z7yQ) &nbsp;•&nbsp;
   [**Quickstart Guide**](#quickstart) &nbsp;•&nbsp;
   [**Architecture**](#architecture) &nbsp;•&nbsp;
@@ -37,7 +36,7 @@
 > - **Run-log triage** — raw harness logs per run with download, "copy notable issues", and clear actions
 > - **Greek translations** for all fork-added strings, and self-sufficient releases: APKs, runtime bundles, and in-app updates all served from this repo
 >
-> Everything upstream ships (through v1.0.10, including backup & restore) is included and kept in sync. Release versions track upstream's version (e.g. `1.0.10`), with versionCodes in **buckets of 10,000**: upstream 1.0.10 (upstream code 11) ships as versionCode `110000`, the next release will be `120000`. Fork-side work-in-progress ships on the **rolling debug channel**: the [`debug-rolling`](https://github.com/SleepinDevil/Mobile-Harness-Qwen-Code/releases/tag/debug-rolling) prerelease (`mobile-harness-online-debug.apk`), signed with the same key as the releases so it installs over them, taking the next free codes **inside the current bucket** (`110001`–`119999`). Because betas always sit between their base release and the next stable, **every** move — stable→beta, beta→beta, beta→next-stable — is a plain Android upgrade. The in-app updater checks both feeds (stable + debug beta, both from this repo) and lists the offers with a channel badge so you pick which to install. Build a rolling debug with `./gradlew :app:assembleOnlineDebug -PappVersionCode=110003 -PappVersionName=1.0.10-dbg3` (upload-signing env loaded) and replace the tag's three assets.
+> Everything upstream ships (through v1.0.10, including backup & restore) is included and kept in sync. Release versions track upstream's version (e.g. `1.0.10`), with versionCodes in **buckets of 10,000**: upstream 1.0.10 (upstream code 11) ships as versionCode `110000`, the next release will be `120000`. Fork-side work-in-progress ships on the **rolling debug channel**: the [`debug-rolling`](https://github.com/SleepinDevil/Mobile-Harness-Qwen-Code/releases/tag/debug-rolling) prerelease (`mobile-harness-online-debug.apk`), signed with the same key as the releases so it installs over them, taking the next free codes **inside the current bucket** (`110001`–`119999`). Because betas always sit between their base release and the next stable, **every** move — stable→beta, beta→beta, beta→next-stable — is a plain Android upgrade. The in-app updater checks both feeds (stable + debug beta, both from this repo) and lists the offers with a channel badge so you pick which to install. Build a rolling debug with `./gradlew :app:assembleOnlineDebug -PappVersionCode=110003 -PappVersionName=1.0.10-dbg3` (upload-signing env loaded), replace the tag's three assets, and rename the release to the current version (e.g. "Rolling debug build — 1.0.10-dbg3") so the beta number is visible on GitHub.
 
 <br />
 
@@ -70,20 +69,12 @@
 
 <table>
   <tr>
-    <td width="50%" valign="top" align="center">
-      <h3>Online Edition</h3>
-      <p><strong>90.1 MB · Recommended</strong></p>
-      <p>Start with the smaller APK. Core, Python, and Android runtime bundles are downloaded only when needed.</p>
+    <td align="center">
+      <h3>Mobile Harness APK</h3>
+      <p><strong>90.1 MB</strong></p>
+      <p>Core, Python, and Android runtime bundles are downloaded only when needed.</p>
       <a href="https://github.com/SleepinDevil/Mobile-Harness-Qwen-Code/releases/latest/download/mobile-harness-online.apk">
-        <img src="https://img.shields.io/badge/Download-Online_APK-F28C52?style=for-the-badge&logo=android&logoColor=white" alt="Download Online APK" />
-      </a>
-    </td>
-    <td width="50%" valign="top" align="center">
-      <h3>Offline Edition</h3>
-      <p><strong>962.4 MB · Everything included</strong></p>
-      <p>Includes the Core, Python, and Android runtime bundles for setup with limited or unavailable internet.</p>
-      <a href="https://github.com/SleepinDevil/Mobile-Harness-Qwen-Code/releases/latest/download/mobile-harness-offline.apk">
-        <img src="https://img.shields.io/badge/Download-Offline_APK-5B8DEF?style=for-the-badge&logo=android&logoColor=white" alt="Download Offline APK" />
+        <img src="https://img.shields.io/badge/Download-APK-F28C52?style=for-the-badge&logo=android&logoColor=white" alt="Download APK" />
       </a>
     </td>
   </tr>
