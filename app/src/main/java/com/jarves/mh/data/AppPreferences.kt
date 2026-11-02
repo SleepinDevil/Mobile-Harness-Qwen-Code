@@ -147,6 +147,16 @@ class AppPreferences(private val context: Context) {
         set(value) { preferences.edit().putLong("last_app_update_check_millis", value).apply() }
 
     /**
+     * Whether the rolling debug-beta feed is consulted next to the stable
+     * feed. Debug builds opt in by default (they live on that channel);
+     * release builds stay quiet about betas until the user enables it in
+     * Settings → Debug beta updates.
+     */
+    var includeDebugUpdateChannel: Boolean
+        get() = preferences.getBoolean("include_debug_update_channel", com.jarves.mh.BuildConfig.DEBUG)
+        set(value) { preferences.edit().putBoolean("include_debug_update_channel", value).apply() }
+
+    /**
      * Debug-only manifest URL override. Empty in release builds; populated via
      * Settings → Update channel in debug builds so a local server (exposed via
      * Cloudflare Tunnel or ngrok) can be tested without publishing a release.

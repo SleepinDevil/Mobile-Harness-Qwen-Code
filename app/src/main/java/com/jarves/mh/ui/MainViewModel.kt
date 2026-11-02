@@ -98,6 +98,7 @@ import com.jarves.mh.runtime.findReusableDebugApk
 import com.jarves.mh.runtime.inferAndroidBuildStage
 import com.jarves.mh.runtime.isDebugApkStale
 import com.jarves.mh.runtime.parseAndroidBuildIssues
+import com.jarves.mh.update.AppUpdateChannel
 import com.jarves.mh.update.AppUpdateInfo
 import com.jarves.mh.update.AppUpdater
 import java.io.File
@@ -443,6 +444,10 @@ data class AppUiState(
     val androidLogcat: AndroidLogcatState = AndroidLogcatState(),
     /** Installable updates from the stable and debug-beta feeds; empty = up to date. */
     val appUpdates: List<AppUpdateInfo> = emptyList(),
+    /** Whether the rolling debug-beta feed is consulted alongside stable. */
+    val appUpdateDebugChannelEnabled: Boolean = false,
+    /** Incremented after every completed update check so Settings can react to manual checks. */
+    val appUpdateCheckSerial: Int = 0,
     /** The offer currently being downloaded/installed (drives the matching row's progress). */
     val appUpdateTarget: AppUpdateInfo? = null,
     val appUpdateStatus: AppUpdateStatus? = null,
@@ -573,6 +578,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             antigravityModel = preferences.antigravityModel,
             antigravityEffort = preferences.antigravityEffort,
             qwenMaxSessionTurns = preferences.agentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_TURNS, QwenRuntimeBridge.DEFAULT_MAX_SESSION_TURNS),
+            appUpdateDebugChannelEnabled = preferences.includeDebugUpdateChannel,
             qwenMaxWallMinutes = preferences.agentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_WALL_MINUTES, QwenRuntimeBridge.DEFAULT_MAX_WALL_MINUTES),
             qwenContextWindowTokens = preferences.agentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_CONTEXT_TOKENS, QwenRuntimeBridge.DEFAULT_CONTEXT_WINDOW_TOKENS),
             qwenAutoCompactPercent = preferences.agentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_AUTO_COMPACT, QwenRuntimeBridge.DEFAULT_AUTO_COMPACT_PERCENT),
@@ -2597,17 +2603,41 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun checkForAppUpdate(force: Boolean = false) {
+    fun checkForAppUpdate(force: Boolean = false, manual: Boolean = false) {
         if (!force && System.currentTimeMillis() - preferences.lastAppUpdateCheckMillis < 24L * 60L * 60L * 1000L) return
         viewModelScope.launch(Dispatchers.IO) {
-            val updates = runCatching { appUpdater().check() }.getOrDefault(emptyList())
+            val debugFeed = _state.value.appUpdateDebugChannelEnabled
+            val updates = runCatching { appUpdater().check(includeDebugFeed = debugFeed) }.getOrDefault(emptyList())
             preferences.lastAppUpdateCheckMillis = System.currentTimeMillis()
-            if (updates.isNotEmpty()) {
-                _state.update {
-                    it.copy(appUpdates = updates, appUpdateStatus = AppUpdateStatus.AVAILABLE, appUpdateError = null)
-                }
+            _state.update { current ->
+                current.copy(
+                    appUpdateCheckSerial = current.appUpdateCheckSerial + 1,
+                    appUpdates = if (updates.isEmpty()) current.appUpdates else updates,
+                    appUpdateStatus = if (updates.isEmpty()) current.appUpdateStatus else AppUpdateStatus.AVAILABLE,
+                    appUpdateError = if (updates.isEmpty()) current.appUpdateError else null,
+                )
+            }
+            if (manual && updates.isEmpty()) {
+                _state.update { it.copy(toastMessage = str(R.string.vm_update_up_to_date)) }
             }
         }
+    }
+
+    /** Manual Settings action: bypass the 24-hour throttle and report back. */
+    fun checkForAppUpdateNow() {
+        checkForAppUpdate(force = true, manual = true)
+    }
+
+    /** Opt in/out of the rolling debug-beta feed; re-checks when opting in. */
+    fun setAppUpdateDebugChannel(enabled: Boolean) {
+        preferences.includeDebugUpdateChannel = enabled
+        _state.update { current ->
+            current.copy(
+                appUpdateDebugChannelEnabled = enabled,
+                appUpdates = if (enabled) current.appUpdates else current.appUpdates.filter { it.channel == AppUpdateChannel.STABLE },
+            )
+        }
+        if (enabled) checkForAppUpdate(force = true)
     }
 
     /** Debug builds only: persist a manifest URL override and re-check immediately. */

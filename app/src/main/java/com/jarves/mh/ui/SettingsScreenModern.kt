@@ -111,6 +111,7 @@ import com.jarves.mh.model.ProviderKind
 import com.jarves.mh.model.ProviderProfile
 import com.jarves.mh.model.providersForAgent
 import com.jarves.mh.network.ConnectionValidation
+import com.jarves.mh.update.AppUpdateInfo
 import com.jarves.mh.network.DiscoveredModel
 import com.jarves.mh.network.ModelDiscoveryResult
 import androidx.compose.material.icons.filled.Language
@@ -146,6 +147,9 @@ fun SettingsScreen(
     onRemoveDevStack: (DevStack) -> Unit = {},
     onInstallAgent: (AgentKind) -> Unit = {},
     onCheckAgentUpdates: () -> Unit = {},
+    onCheckForAppUpdate: () -> Unit = {},
+    onSetAppUpdateDebugChannel: (Boolean) -> Unit = {},
+    onInstallAppUpdate: (AppUpdateInfo) -> Unit = {},
     onUpdateAgent: (AgentKind) -> Unit = {},
     onStartAntigravityLogin: () -> Unit = {},
     onSubmitAntigravityCode: (String) -> Unit = {},
@@ -189,6 +193,18 @@ fun SettingsScreen(
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
     var expanded by rememberSaveable { mutableStateOf<SettingsSection?>(null) }
+    // Manual "Check for updates" opens the chooser right here when the check
+    // found offers; seenUpdateCheck keeps old checks from reopening it.
+    var showAppUpdates by rememberSaveable { mutableStateOf(false) }
+    var seenUpdateCheck by rememberSaveable { mutableStateOf(0) }
+    LaunchedEffect(state.appUpdateCheckSerial) {
+        val serial = state.appUpdateCheckSerial
+        if (serial != seenUpdateCheck) {
+            seenUpdateCheck = serial
+            if (state.appUpdates.isNotEmpty()) showAppUpdates = true
+        }
+    }
+    if (showAppUpdates) UpdateOffersDialog(state, onInstallAppUpdate) { showAppUpdates = false }
     var harnessQwenOpen by rememberSaveable { mutableStateOf(true) }
     var harnessClaudeOpen by rememberSaveable { mutableStateOf(false) }
     var harnessDshOpen by rememberSaveable { mutableStateOf(false) }
@@ -855,6 +871,60 @@ fun SettingsScreen(
                             }
                         }
                     }
+                    }
+                }
+            }
+
+            item {
+                Column(Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = onCheckForAppUpdate)
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Default.Download, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.st_check_updates),
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                text = stringResource(R.string.st_check_updates_subtitle),
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Default.Refresh, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.st_beta_channel),
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                text = stringResource(R.string.st_beta_channel_help),
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Switch(
+                            checked = state.appUpdateDebugChannelEnabled,
+                            onCheckedChange = onSetAppUpdateDebugChannel,
+                        )
                     }
                 }
             }

@@ -106,6 +106,10 @@
     <string name="st_transfer_speed_eta">%1$s · متبقٍ %2$s</string>
     <string name="st_update_agent">تحديث %1$s</string>
     <string name="st_update_badge">تحديث</string>
+    <string name="st_check_updates">التحقق من التحديثات</string>
+    <string name="st_check_updates_subtitle">يتحقق الآن من قناتي الإصدار المستقر والنسخة التجريبية للتنقيح</string>
+    <string name="st_beta_channel">تحديثات النسخة التجريبية للتنقيح</string>
+    <string name="st_beta_channel_help">يتحقق أيضاً من قناة التنقيح المتدحرجة للحصول على إصدارات تجريبية. عطّلها للإبلاغ عن الإصدارات المستقرة فقط.</string>
     <string name="st_update_channel">قناة التحديث</string>
     <string name="st_update_channel_default">إصدار GitHub الافتراضي</string>
     <string name="st_update_channel_help">لإصدارات التصحيح فقط. الصق عنوان URL المؤقت للبيان من Cloudflare Tunnel أو ngrok أو أي خادم HTTPS يستضيف mobile-harness-update.json وملف APK أحدث.</string>

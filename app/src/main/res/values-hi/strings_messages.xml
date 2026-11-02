@@ -29,6 +29,7 @@
     <string name="vm_opening_workspace">आपका निजी वर्कस्पेस खुल रहा है</string>
     <string name="vm_initialization_failed">Claude Code आरंभ करना विफल रहा</string>
     <string name="vm_installer_start_failed">Android इंस्टॉलर शुरू नहीं हो सका</string>
+    <string name="vm_update_up_to_date">कोई नया संस्करण नहीं मिला — आप नवीनतम संस्करण पर हैं</string>
     <string name="vm_update_download_failed">अपडेट डाउनलोड विफल रहा</string>
     <string name="vm_setup_offline">Wi-Fi या मोबाइल डेटा से कनेक्ट करें, फिर दोबारा कोशिश करें। पहली बार का सेटअप पूरा करने के लिए इंटरनेट आवश्यक है।</string>
     <string name="vm_setup_generic_error">Mobile Harness तैयार करते समय कुछ गलत हो गया। कृपया फिर से कोशिश करें।</string>

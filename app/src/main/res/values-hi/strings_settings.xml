@@ -106,6 +106,10 @@
     <string name="st_transfer_speed_eta">%1$s · %2$s शेष</string>
     <string name="st_update_agent">%1$s अपडेट करें</string>
     <string name="st_update_badge">अपडेट</string>
+    <string name="st_check_updates">अपडेट जाँचें</string>
+    <string name="st_check_updates_subtitle">अभी स्थिर और डिबग बीटा चैनल जाँचता है</string>
+    <string name="st_beta_channel">डिबग बीटा अपडेट</string>
+    <string name="st_beta_channel_help">बीटा बिल्ड के लिए रोलिंग डिबग चैनल भी जाँचें। केवल स्थिर रिलीज़ चाहिए तो बंद करें।</string>
     <string name="st_update_channel">अपडेट चैनल</string>
     <string name="st_update_channel_default">डिफ़ॉल्ट GitHub रिलीज़</string>
     <string name="st_update_channel_help">केवल डिबग बिल्ड के लिए। Cloudflare Tunnel, ngrok या mobile-harness-update.json और नया APK होस्ट करने वाले किसी भी HTTPS सर्वर का अस्थायी मैनिफ़ेस्ट URL चिपकाएँ।</string>

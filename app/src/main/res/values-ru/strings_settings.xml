@@ -106,6 +106,10 @@
     <string name="st_transfer_speed_eta">%1$s · осталось %2$s</string>
     <string name="st_update_agent">Обновить %1$s</string>
     <string name="st_update_badge">ОБНОВЛЕНИЕ</string>
+    <string name="st_check_updates">Проверить обновления</string>
+    <string name="st_check_updates_subtitle">Сейчас проверяет каналы стабильной и бета-версий</string>
+    <string name="st_beta_channel">Обновления отладочной беты</string>
+    <string name="st_beta_channel_help">Также проверять плавающий отладочный канал с бета-сборками. Выключите, чтобы получать только стабильные выпуски.</string>
     <string name="st_update_channel">Канал обновлений</string>
     <string name="st_update_channel_default">Стандартный релиз GitHub</string>
     <string name="st_update_channel_help">Только для отладочных сборок. Вставьте временный URL манифеста из Cloudflare Tunnel, ngrok или любого HTTPS-сервера, где размещены mobile-harness-update.json и более новый APK.</string>

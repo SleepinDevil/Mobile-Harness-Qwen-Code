@@ -29,6 +29,7 @@
     <string name="vm_opening_workspace">Άνοιγμα του ιδιωτικού σας χώρου εργασίας</string>
     <string name="vm_initialization_failed">Η αρχικοποίηση του Claude Code απέτυχε</string>
     <string name="vm_installer_start_failed">Δεν ήταν δυνατή η εκκίνηση του προγράμματος εγκατάστασης Android</string>
+    <string name="vm_update_up_to_date">Είστε ενημερωμένοι — δεν βρέθηκε νεότερη έκδοση</string>
     <string name="vm_update_download_failed">Η λήψη της ενημέρωσης απέτυχε</string>
     <string name="vm_setup_offline">Συνδεθείτε σε Wi-Fi ή δεδομένα κινητής και δοκιμάστε ξανά. Απαιτείται σύνδεση στο Internet για την ολοκλήρωση της αρχικής ρύθμισης.</string>
     <string name="vm_setup_generic_error">Παρουσιάστηκε πρόβλημα κατά την προετοιμασία του Mobile Harness. Δοκιμάστε ξανά.</string>

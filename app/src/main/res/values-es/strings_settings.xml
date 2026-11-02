@@ -106,6 +106,10 @@
     <string name="st_transfer_speed_eta">%1$s · quedan %2$s</string>
     <string name="st_update_agent">Actualizar %1$s</string>
     <string name="st_update_badge">ACTUALIZAR</string>
+    <string name="st_check_updates">Buscar actualizaciones</string>
+    <string name="st_check_updates_subtitle">Comprueba ahora los canales estable y beta de depuración</string>
+    <string name="st_beta_channel">Actualizaciones beta de depuración</string>
+    <string name="st_beta_channel_help">Comprueba también el canal beta móvil para versiones de prueba. Desactívalo para solo versiones estables.</string>
     <string name="st_update_channel">Canal de actualizaciones</string>
     <string name="st_update_channel_default">Versión predeterminada de GitHub</string>
     <string name="st_update_channel_help">Solo para compilaciones de depuración. Pega la URL temporal del manifiesto de Cloudflare Tunnel, ngrok o cualquier servidor HTTPS que aloje mobile-harness-update.json y un APK más reciente.</string>

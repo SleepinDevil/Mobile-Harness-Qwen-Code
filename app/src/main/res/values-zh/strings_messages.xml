@@ -29,6 +29,7 @@
     <string name="vm_opening_workspace">正在打开你的私有工作区</string>
     <string name="vm_initialization_failed">Claude Code 初始化失败</string>
     <string name="vm_installer_start_failed">无法启动 Android 安装程序</string>
+    <string name="vm_update_up_to_date">已是最新版本——未发现更新版本</string>
     <string name="vm_update_download_failed">更新下载失败</string>
     <string name="vm_setup_offline">请连接 Wi-Fi 或移动数据后重试。完成首次设置需要联网。</string>
     <string name="vm_setup_generic_error">准备 Mobile Harness 时出错。请重试。</string>

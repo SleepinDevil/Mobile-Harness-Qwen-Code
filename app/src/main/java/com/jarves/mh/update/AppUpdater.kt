@@ -92,9 +92,9 @@ class AppUpdater(
         AppStrings.get(context, id, *args)
 
     /** Fetches both channel manifests; an unreachable feed simply yields no offer. */
-    fun check(): List<AppUpdateInfo> = appUpdateOffers(
+    fun check(includeDebugFeed: Boolean = true): List<AppUpdateInfo> = appUpdateOffers(
         stableBody = fetch(manifestUrlOverride.ifBlank { BuildConfig.APP_UPDATE_MANIFEST_URL }),
-        debugBody = fetch(BuildConfig.APP_UPDATE_DEBUG_MANIFEST_URL),
+        debugBody = if (includeDebugFeed) fetch(BuildConfig.APP_UPDATE_DEBUG_MANIFEST_URL) else null,
         variant = BuildConfig.APP_VARIANT,
         installedCode = BuildConfig.VERSION_CODE.toLong(),
     )

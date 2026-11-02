@@ -106,6 +106,10 @@
     <string name="st_transfer_speed_eta">%1$s · 剩余 %2$s</string>
     <string name="st_update_agent">更新 %1$s</string>
     <string name="st_update_badge">更新</string>
+    <string name="st_check_updates">检查更新</string>
+    <string name="st_check_updates_subtitle">立即检查正式版和调试测试版通道</string>
+    <string name="st_beta_channel">调试测试版更新</string>
+    <string name="st_beta_channel_help">同时检查滚动调试通道中的测试版。关闭后仅提醒正式版本。</string>
     <string name="st_update_channel">更新渠道</string>
     <string name="st_update_channel_default">默认 GitHub 发布版</string>
     <string name="st_update_channel_help">仅限调试版本。粘贴来自 Cloudflare Tunnel、ngrok 或任何托管 mobile-harness-update.json 和较新 APK 的 HTTPS 服务器的临时清单 URL。</string>

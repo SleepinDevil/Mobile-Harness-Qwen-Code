@@ -106,6 +106,10 @@
     <string name="st_transfer_speed_eta">%1$s · απομένουν %2$s</string>
     <string name="st_update_agent">Ενημέρωση %1$s</string>
     <string name="st_update_badge">ΕΝΗΜΕΡΩΣΗ</string>
+    <string name="st_check_updates">Έλεγχος για ενημερώσεις</string>
+    <string name="st_check_updates_subtitle">Ελέγχει τώρα τα κανάλια σταθερής και δοκιμαστικής έκδοσης</string>
+    <string name="st_beta_channel">Ενημερώσεις δοκιμαστικής έκδοσης</string>
+    <string name="st_beta_channel_help">Ελέγχει επίσης το κυλιόμενο κανάλι δοκιμαστικών εκδορών. Απενεργοποιήστε το μόνο για σταθερές εκδόσεις.</string>
     <string name="st_update_channel">Κανάλι ενημερώσεων</string>
     <string name="st_update_channel_default">Προεπιλεγμένη έκδοση GitHub</string>
     <string name="st_update_channel_help">Μόνο για builds εντοπισμού σφαλμάτων. Επικολλήστε το προσωρινό URL manifest από Cloudflare Tunnel, ngrok ή οποιονδήποτε διακομιστή HTTPS που φιλοξενεί το mobile-harness-update.json και ένα νεότερο APK.</string>

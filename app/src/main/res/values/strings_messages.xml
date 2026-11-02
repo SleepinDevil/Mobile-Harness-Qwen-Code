@@ -29,6 +29,7 @@
     <string name="vm_opening_workspace">Opening your private workspace</string>
     <string name="vm_initialization_failed">Claude Code initialization failed</string>
     <string name="vm_installer_start_failed">Could not start the Android installer</string>
+    <string name="vm_update_up_to_date">You’re up to date — no newer version found</string>
     <string name="vm_update_download_failed">Update download failed</string>
     <string name="vm_setup_offline">Connect to Wi-Fi or mobile data, then try again. Internet is required to finish the first-time setup.</string>
     <string name="vm_setup_generic_error">Something went wrong while preparing Mobile Harness. Please try again.</string>

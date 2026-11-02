@@ -29,6 +29,7 @@
     <string name="vm_opening_workspace">Открытие вашего личного рабочего пространства</string>
     <string name="vm_initialization_failed">Не удалось инициализировать Claude Code</string>
     <string name="vm_installer_start_failed">Не удалось запустить установщик Android</string>
+    <string name="vm_update_up_to_date">Обновлений нет — установлена последняя версия</string>
     <string name="vm_update_download_failed">Не удалось загрузить обновление</string>
     <string name="vm_setup_offline">Подключитесь к Wi-Fi или мобильной сети и повторите попытку. Для завершения первоначальной настройки нужен интернет.</string>
     <string name="vm_setup_generic_error">Что-то пошло не так при подготовке Mobile Harness. Попробуйте ещё раз.</string>
