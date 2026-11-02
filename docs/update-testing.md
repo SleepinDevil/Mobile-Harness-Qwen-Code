@@ -38,7 +38,7 @@ The final two arguments are optional and default to `4` and
 
 ## 2. Point the debug app at the manifest
 
-On the Moto, open **Settings → Update channel** (debug builds only —
+On the Moto, open **Settings → Update test server** (debug builds only —
 hidden in release builds).
 
 Paste:
@@ -65,7 +65,7 @@ Trigger the update from the dashboard. The full production path runs:
 
 ## 4. Reset
 
-When you're done, tap **Reset** under Update channel. The app falls back
+When you're done, tap **Reset** under Update test server. The app falls back
 to the default GitHub manifest URL on the next check.
 
 ## Troubleshooting
@@ -82,5 +82,5 @@ to the default GitHub manifest URL on the next check.
 ## Re-running
 
 The script wipes `dist/update-test/` on every run, so iteration is safe.
-The phone's "Update channel" override persists across reinstalls unless
+The phone's "Update test server" override persists across reinstalls unless
 you clear app data, so subsequent runs only need a new tunnel URL.

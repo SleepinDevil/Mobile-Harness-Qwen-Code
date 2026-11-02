@@ -82,7 +82,7 @@ class AppUpdater(
     /**
      * Optional STABLE-manifest URL override. When non-empty, used in place of
      * [BuildConfig.APP_UPDATE_MANIFEST_URL]. Debug builds populate this
-     * from Settings → Update channel so the update flow can be exercised
+     * from Settings → Update test server so the update flow can be exercised
      * end-to-end against a Cloudflare Tunnel or ngrok HTTPS URL without
      * publishing a release to GitHub.
      */

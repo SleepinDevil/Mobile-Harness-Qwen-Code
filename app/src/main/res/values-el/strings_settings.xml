@@ -110,9 +110,9 @@
     <string name="st_check_updates_subtitle">Ελέγχει τώρα τα κανάλια σταθερής και δοκιμαστικής έκδοσης</string>
     <string name="st_beta_channel">Ενημερώσεις δοκιμαστικής έκδοσης</string>
     <string name="st_beta_channel_help">Ελέγχει επίσης το κυλιόμενο κανάλι δοκιμαστικών εκδορών. Απενεργοποιήστε το μόνο για σταθερές εκδόσεις.</string>
-    <string name="st_update_channel">Κανάλι ενημερώσεων</string>
-    <string name="st_update_channel_default">Προεπιλεγμένη έκδοση GitHub</string>
-    <string name="st_update_channel_help">Μόνο για builds εντοπισμού σφαλμάτων. Επικολλήστε το προσωρινό URL manifest από Cloudflare Tunnel, ngrok ή οποιονδήποτε διακομιστή HTTPS που φιλοξενεί το mobile-harness-update.json και ένα νεότερο APK.</string>
+    <string name="st_update_channel">Δοκιμαστικός διακομιστής ενημερώσεων</string>
+    <string name="st_update_channel_default">Έκδοση GitHub εξ ορισμού</string>
+    <string name="st_update_channel_help">Μόνο για δοκιμαστικές εκδόσεις. Για δοκιμή ενημερώσεων πριν τη δημοσίευση: επικολλήστε το URL της διακήρυξης από Cloudflare Tunnel, ngrok ή οποιονδήποτε HTTPS διακομιστή με mobile-harness-update.json και νεότερο APK. Η επαναφορά επιστρέφει στα κανονικά κανάλια.</string>
     <string name="st_update_channel_overridden">Παρακάμφθηκε · μόνο debug</string>
     <string name="st_use_and_check">Χρήση &amp; έλεγχος</string>
     <string name="st_use_custom_model_id">Χρήση προσαρμοσμένου ID μοντέλου:</string>

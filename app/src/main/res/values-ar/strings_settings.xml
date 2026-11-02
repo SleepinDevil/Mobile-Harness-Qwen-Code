@@ -110,9 +110,9 @@
     <string name="st_check_updates_subtitle">يتحقق الآن من قناتي الإصدار المستقر والنسخة التجريبية للتنقيح</string>
     <string name="st_beta_channel">تحديثات النسخة التجريبية للتنقيح</string>
     <string name="st_beta_channel_help">يتحقق أيضاً من قناة التنقيح المتدحرجة للحصول على إصدارات تجريبية. عطّلها للإبلاغ عن الإصدارات المستقرة فقط.</string>
-    <string name="st_update_channel">قناة التحديث</string>
+    <string name="st_update_channel">خادم اختبار التحديثات</string>
     <string name="st_update_channel_default">إصدار GitHub الافتراضي</string>
-    <string name="st_update_channel_help">لإصدارات التصحيح فقط. الصق عنوان URL المؤقت للبيان من Cloudflare Tunnel أو ngrok أو أي خادم HTTPS يستضيف mobile-harness-update.json وملف APK أحدث.</string>
+    <string name="st_update_channel_help">للتصحيحات فقط. لاختبار التحديثات قبل النشر: الصق رابط البيان من Cloudflare Tunnel أو ngrok أو أي خادم HTTPS يستضيف mobile-harness-update.json وحزمة APK أحدث. إعادة التعيين تعود إلى القناتين المعتادتين.</string>
     <string name="st_update_channel_overridden">تم التجاوز · للتصحيح فقط</string>
     <string name="st_use_and_check">استخدام وتحقق</string>
     <string name="st_use_custom_model_id">استخدام معرّف نموذج مخصص:</string>

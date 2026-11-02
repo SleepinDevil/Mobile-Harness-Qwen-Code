@@ -110,9 +110,9 @@
     <string name="st_check_updates_subtitle">Checks the stable and debug beta channels right now</string>
     <string name="st_beta_channel">Debug beta updates</string>
     <string name="st_beta_channel_help">Also check the rolling debug channel for beta builds. Turn off to hear only about stable releases.</string>
-    <string name="st_update_channel">Update channel</string>
+    <string name="st_update_channel">Update test server</string>
     <string name="st_update_channel_default">Default GitHub release</string>
-    <string name="st_update_channel_help">Debug builds only. Paste the temporary manifest URL from Cloudflare Tunnel, ngrok, or any HTTPS server hosting mobile-harness-update.json and a newer APK.</string>
+    <string name="st_update_channel_help">Debug builds only. For pre-release update testing: paste a manifest URL from Cloudflare Tunnel, ngrok, or any HTTPS server hosting mobile-harness-update.json and a newer APK. Reset falls back to the normal feeds.</string>
     <string name="st_update_channel_overridden">Overridden · debug only</string>
     <string name="st_use_and_check">Use &amp; check</string>
     <string name="st_use_custom_model_id">Use custom model ID:</string>

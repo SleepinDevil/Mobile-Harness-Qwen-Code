@@ -158,7 +158,7 @@ class AppPreferences(private val context: Context) {
 
     /**
      * Debug-only manifest URL override. Empty in release builds; populated via
-     * Settings → Update channel in debug builds so a local server (exposed via
+     * Settings → Update test server in debug builds so a local server (exposed via
      * Cloudflare Tunnel or ngrok) can be tested without publishing a release.
      */
     var debugUpdateManifestUrl: String

@@ -11,7 +11,7 @@
 #   ./scripts/serve-update-server.sh 8080 https://example.trycloudflare.com 4 1.0.3-test
 #
 # Paste BASE_URL + /mobile-harness-update.json into the debug app's
-# Settings → Update channel and tap Use & check.
+# Settings → Update test server and tap Use & check.
 
 set -euo pipefail
 
@@ -78,7 +78,7 @@ Files:
 APK URL baked into the manifest:
   $base_url/$apk_name
 
-In a debug build of Mobile Harness, open Settings → Update channel, paste:
+In a debug build of Mobile Harness, open Settings → Update test server, paste:
   $base_url/mobile-harness-update.json
 and tap Use & check.
 
